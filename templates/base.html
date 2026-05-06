@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Салон связи{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .product-card {
+            transition: transform 0.2s;
+            margin-bottom: 20px;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .store-badge {
+            font-size: 0.9rem;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        .store-card {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .store-card:hover {
+            background-color: #f8f9fa;
+        }
+        .navbar-brand i {
+            margin-right: 8px;
+        }
+
+        /* Плавающая корзина */
+        .floating-cart {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .floating-cart a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background-color: #007bff;
+            border-radius: 50%;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .floating-cart a:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+        .floating-cart i {
+            font-size: 28px;
+        }
+        .cart-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-phone"></i> Салон связи
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Главная</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/products">Товары</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/stores">Магазины</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/map">Карта</a>
+                    </li>
+
+                    {% if session.is_admin or session.is_manager %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin">👑 Админка</a>
+                    </li>
+                    {% endif %}
+
+                    {% if session.user_id %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/profile">{{ session.user_name }}</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/logout">Выход</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/login">Вход</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/register">Регистрация</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Подвал -->
+    <footer class="bg-light text-center text-muted py-3 mt-5">
+        <div class="container">
+            <p class="mb-0">© 2026 Дипломная работа Дроздова В.А.</p>
+        </div>
+    </footer>
+
+    <!-- Плавающая корзина (показывается только если есть товары) -->
+    {% if session.user_id %}
+    <div class="floating-cart" id="floatingCart" style="display: none;">
+        <a href="/cart" id="cart-icon">
+            <i class="bi bi-cart"></i>
+            <span class="cart-badge" id="cart-count">0</span>
+        </a>
+    </div>
+    {% endif %}
+
+    <script>
+        function updateCartCount() {
+            fetch('/cart/count')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.getElementById('cart-count');
+                    const cartDiv = document.getElementById('floatingCart');
+                    if (badge && cartDiv) {
+                        badge.textContent = data.count;
+                        if (data.count > 0) {
+                            cartDiv.style.display = 'block';
+                            badge.style.display = 'flex';
+                        } else {
+                            cartDiv.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(err => console.log('Корзина не загружена'));
+        }
+
+        if (document.getElementById('cart-count')) {
+            updateCartCount();
+        }
+    </script>
+</body>
+</html>

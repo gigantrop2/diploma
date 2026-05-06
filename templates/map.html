@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Карта магазинов{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Наши магазины на карте</h1>
+
+<div id="map" style="width: 100%; height: 600px; margin-bottom: 30px;"></div>
+
+<div class="row" id="stores-list">
+    {% for store in stores %}
+    <div class="col-md-4 mb-3">
+        <div class="card store-card" data-id="{{ store[0] }}" data-lat="{{ store[5] }}" data-lon="{{ store[6] }}">
+            <div class="card-body">
+                <h5 class="card-title">{{ store[1] }}</h5>
+                <p class="card-text">
+                    <i class="bi bi-geo-alt"></i> {{ store[2] }}, {{ store[3] }}<br>
+                    <i class="bi bi-clock"></i> {{ store[7] or '10:00–20:00' }}
+                </p>
+                <a href="/store/{{ store[0] }}" class="btn btn-sm btn-primary">Товары в магазине</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script src="https://api-maps.yandex.ru/2.1/?apikey=167ed6b4-45f2-4350-b36b-3d3788f64a5d&lang=ru_RU"></script>
+<script>
+    ymaps.ready(init);
+
+    function init() {
+        var map = new ymaps.Map("map", {
+            center: [59.220, 39.890], // центр Вологды
+            zoom: 12,
+            controls: ['zoomControl', 'fullscreenControl']
+        });
+
+        // Собираем все магазины из карточек
+        var stores = [];
+        document.querySelectorAll('.store-card').forEach(function(card) {
+            stores.push({
+                id: card.dataset.id,
+                name: card.querySelector('.card-title').textContent,
+                address: card.querySelector('.card-text').innerHTML.replace(/<br.*/g, ''),
+                coords: [parseFloat(card.dataset.lat), parseFloat(card.dataset.lon)],
+                element: card
+            });
+        });
+
+        // Добавляем метки на карту
+        stores.forEach(function(store) {
+            var placemark = new ymaps.Placemark(store.coords, {
+                balloonContent: `
+                    <strong>${store.name}</strong><br>
+                    ${store.address}<br>
+                    <a href="/store/${store.id}">Товары в магазине</a>
+                `,
+                hintContent: store.name
+            }, {
+                preset: 'islands#blueDotIcon',
+                openBalloonOnClick: true
+            });
+
+            map.geoObjects.add(placemark);
+
+            // При клике на карточку магазина — центрируем карту
+            store.element.addEventListener('click', function(e) {
+                if (!e.target.closest('a')) {
+                    map.setCenter(store.coords, 16, {
+                        duration: 300
+                    });
+                    placemark.balloon.open();
+                }
+            });
+        });
+
+        // Если магазинов нет — скрываем карту
+        if (stores.length === 0) {
+            document.getElementById('map').style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

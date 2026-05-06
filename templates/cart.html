@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Корзина{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Корзина</h1>
+
+{% if items %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Магазин получения: <strong>{{ cart[2] }}, {{ cart[3] }}</strong></h5>
+            
+            <!-- Кнопка для выбора другого магазина -->
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-bs-toggle="modal" data-bs-target="#storeModal">
+                <i class="bi bi-pencil"></i> Изменить магазин
+            </button>
+        </div>
+    </div>
+
+    <!-- Модальное окно с выбором магазина -->
+    <div class="modal fade" id="storeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Выберите магазин</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="/update_cart_store" method="post">
+                    <div class="modal-body">
+                        <select name="store_id" class="form-select" required>
+                            {% for store in all_stores %}
+                            <option value="{{ store[0] }}" {% if store[0] == cart[1] %}selected{% endif %}>
+                                {{ store[1] }}, {{ store[2] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Товар</th>
+                <th>Количество</th>
+                <th>Цена</th>
+                <th>Сумма</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item[1] }}</td>
+                <td>{{ item[2] }}</td>
+                <td>{{ item[3] }} ₽</td>
+                <td>{{ item[4] }} ₽</td>
+                <td>
+                    <form action="/remove_from_cart" method="post" style="display: inline;">
+                        <input type="hidden" name="product_id" value="{{ item[0] }}">
+                        <button type="submit" class="btn btn-sm btn-danger">
+                            <i class="bi bi-trash"></i> Удалить
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="4">Итого:</th>
+                <th>{{ total }} ₽</th>
+            </tr>
+        </tfoot>
+    </table>
+
+    <a href="/checkout" class="btn btn-success">Оформить заказ</a>
+{% else %}
+    <div class="alert alert-info">Корзина пуста</div>
+{% endif %}
+
+<a href="/products" class="btn btn-primary mt-3">Продолжить покупки</a>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Все магазины{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Наши магазины</h1>
+
+<div class="row">
+    {% for store in stores %}
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ store[1] }}</h5>
+                <p class="card-text">
+                    <i class="bi bi-geo-alt"></i> {{ store[2] }}, {{ store[3] }}<br>
+                    {% if store[6] %}
+                        <i class="bi bi-clock"></i> {{ store[6] }}
+                    {% endif %}
+                </p>
+                
+                {% if store[4] and store[5] %}
+                <a href="https://yandex.ru/maps/?pt={{ store[5] }},{{ store[4] }}&z=18&l=map" 
+                   target="_blank" 
+                   class="btn btn-sm btn-primary">
+                    <i class="bi bi-map"></i> Открыть на карте
+                </a>
+                {% else %}
+                <span class="text-muted">Координаты не указаны</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-info">Магазинов пока нет</div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

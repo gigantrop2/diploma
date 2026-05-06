@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Личный кабинет{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="mb-4">Личный кабинет</h2>
+                
+                <table class="table">
+                    <tr>
+                        <th>Email:</th>
+                        <td>{{ user[0] }}</td>
+                    </tr>
+                    <tr>
+                        <th>Телефон:</th>
+                        <td>{{ user[1] }}</td>
+                    </tr>
+                    <tr>
+                        <th>ФИО:</th>
+                        <td>{{ user[2] }}</td>
+                    </tr>
+                    <tr>
+                        <th>Дата регистрации:</th>
+                        <td>{{ user[3] }}</td>
+                    </tr>
+                    <tr>
+                        <th>Тип аккаунта:</th>
+                        <td>
+                            {% if user[4] %}
+                                <span class="badge bg-warning">Сотрудник</span>
+                            {% else %}
+                                <span class="badge bg-info">Клиент</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+                
+                <a href="/" class="btn btn-primary">На главную</a>
+            </div>
+        </div>
+
+        <!-- Блок с заказами -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h3 class="h5 mb-3">Мои заказы</h3>
+                
+                {% if orders %}
+                <div class="list-group">
+                    {% for order in orders %}
+                    <a href="/order/{{ order[0] }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ order[1] }}</strong><br>
+                                <small class="text-muted">{{ order[2] }}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-info">{{ order[3] }}</span><br>
+                                <small>{{ order[4] }} ₽</small>
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">У вас пока нет заказов</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

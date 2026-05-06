@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Заказ {{ order[1] }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h1 class="h3 mb-3">Заказ {{ order[1] }}</h1>
+                
+                <div class="mb-3">
+                    <span class="badge bg-info p-2">Статус: {{ order[4] }}</span>
+                </div>
+                
+                <p><strong>Дата:</strong> {{ order[2] }}</p>
+                <p><strong>Клиент:</strong> {{ order[10] }}</p>  <!-- full_name из users -->
+                <p><strong>Email:</strong> {{ order[11] }}</p>   <!-- email из users -->
+                <p><strong>Телефон:</strong> {{ order[5] }}</p>  <!-- customer_phone -->
+                <p><strong>Магазин получения:</strong> {{ order[7] }}, {{ order[8] }}</p>
+                <p><strong>Адрес:</strong> {{ order[9] }}</p>
+                
+                <h2 class="h5 mt-4">Состав заказа:</h2>
+                
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Товар</th>
+                            <th>Количество</th>
+                            <th>Цена</th>
+                            <th>Сумма</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item[0] }}</td>
+                            <td>{{ item[1] }}</td>
+                            <td>{{ item[2] }} ₽</td>
+                            <td>{{ item[3] }} ₽</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="3">Итого:</th>
+                            <th>{{ order[3] }} ₽</th>  <!-- total_amount -->
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div class="mt-4">
+                    <a href="/admin/orders" class="btn btn-primary">Назад к списку</a>
+                    
+                    <!-- Форма изменения статуса -->
+                    <form action="/admin/order/{{ order[0] }}/status" method="post" class="d-inline-block ms-2">
+                        <select name="status_id" class="form-select form-select-sm d-inline-block w-auto">
+                            <option value="1" {% if order[4] == 'Новый' %}selected{% endif %}>Новый</option>
+                            <option value="2" {% if order[4] == 'Подтвержден' %}selected{% endif %}>Подтвержден</option>
+                            <option value="3" {% if order[4] == 'Резерв' %}selected{% endif %}>Резерв</option>
+                            <option value="4" {% if order[4] == 'Готов к выдаче' %}selected{% endif %}>Готов</option>
+                            <option value="5" {% if order[4] == 'Выдан' %}selected{% endif %}>Выдан</option>
+                            <option value="6" {% if order[4] == 'Отменен' %}selected{% endif %}>Отменен</option>
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-success">Изменить статус</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Отчёт по брендам{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">📊 Отчёт по брендам</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Выберите бренд</label>
+                    <select name="brand" class="form-select" required>
+                        <option value="">-- Выберите бренд --</option>
+                        {% for brand in brands %}
+                        <option value="{{ brand }}" {% if selected_brand == brand %}selected{% endif %}>
+                            {{ brand }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">Показать отчёт</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if report %}
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ report.product_count }}</h3>
+                    <p class="mb-0">Товаров в ассортименте</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card shadow bg-success text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ "%.2f"|format(report.avg_price) }} ₽</h3>
+                    <p class="mb-0">Средняя цена</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5 class="card-title">🔻 Минимальная цена</h5>
+                    <h3 class="text-success">{{ "%.2f"|format(report.min_price) }} ₽</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5 class="card-title">🔺 Максимальная цена</h5>
+                    <h3 class="text-danger">{{ "%.2f"|format(report.max_price) }} ₽</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">📋 Список товаров бренда "{{ selected_brand }}"</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Артикул</th>
+                            <th>Название товара</th>
+                            <th>Цена</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in report.products %}
+                        <tr>
+                            <td><code>{{ product[2] }}</code></td>
+                            <td>{{ product[0] }}</td>
+                            <td class="fw-bold">{{ "%.2f"|format(product[1]) }} ₽</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="/admin" class="btn btn-secondary">← Назад в админку</a>
+    </div>
+</div>
+{% endblock %}

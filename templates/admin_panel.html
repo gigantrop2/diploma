@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Админ-панель{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">👑 Админ-панель</h1>
+    
+    <div class="row">
+        {% if session.is_admin or session.is_manager %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-cart" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Заказы</h5>
+                    <p class="card-text">Просмотр и изменение статусов заказов</p>
+                    <a href="/admin/orders" class="btn btn-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if session.is_admin or session.is_manager %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-box-seam" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Товары</h5>
+                    <p class="card-text">Добавление, редактирование, удаление товаров</p>
+                    <a href="/admin/products" class="btn btn-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if session.is_admin or session.is_manager %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-filetype-csv" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">📂 Простой CSV</h5>
+                    <p class="card-text">Загрузка товаров из CSV</p>
+                    <a href="/admin/upload_csv_simple" class="btn btn-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if session.is_admin or session.is_manager %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-excel" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">📂 Финал Excel</h5>
+                    <p class="card-text">Загрузка 6.xls напрямую</p>
+                    <a href="/admin/upload_excel_final" class="btn btn-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    {% if session.is_admin or session.is_manager %}
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-graph-up" style="font-size: 3rem;"></i>
+                <h5 class="card-title mt-3"> Отчёт по брендам</h5>
+                <p class="card-text">Анализ цен по брендам</p>
+                <a href="/admin/brand_report" class="btn btn-primary">Перейти</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+        {% if session.is_admin %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-people" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Пользователи</h5>
+                    <p class="card-text">Управление ролями и сброс паролей</p>
+                    <a href="/admin/users" class="btn btn-danger">Перейти (только админ)</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

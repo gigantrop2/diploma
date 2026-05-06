@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Главная - Салон связи{% endblock %}
+
+{% block content %}
+<!-- Hero блок -->
+<div class="bg-primary text-white rounded-3 p-5 mb-5 text-center" style="background: linear-gradient(135deg, #0d6efd, #0a58ca);">
+    <div class="container py-4">
+        <h1 class="display-4 fw-bold mb-3">Мобильные телефоны в салонах твоего города</h1>
+        <p class="lead mb-4">Реальное наличие на точках, резерв онлайн, самовывоз</p>
+        <a href="/products" class="btn btn-light btn-lg px-4">Перейти к товарам →</a>
+    </div>
+</div>
+
+<!-- Как мы работаем -->
+<div class="container mb-5">
+    <h2 class="text-center mb-5">Как мы работаем</h2>
+    <div class="row g-4">
+        <div class="col-md-3 text-center">
+            <div class="bg-light p-4 rounded-3">
+                <i class="bi bi-search" style="font-size: 3rem; color: #0d6efd;"></i>
+                <h5 class="mt-3">Найди товар</h5>
+                <p class="text-muted">Поиск по бренду, модели или цене</p>
+            </div>
+        </div>
+        <div class="col-md-3 text-center">
+            <div class="bg-light p-4 rounded-3">
+                <i class="bi bi-geo-alt" style="font-size: 3rem; color: #0d6efd;"></i>
+                <h5 class="mt-3">Выбери точку</h5>
+                <p class="text-muted">Карта всех салонов сети</p>
+            </div>
+        </div>
+        <div class="col-md-3 text-center">
+            <div class="bg-light p-4 rounded-3">
+                <i class="bi bi-cart-check" style="font-size: 3rem; color: #0d6efd;"></i>
+                <h5 class="mt-3">Зарезервируй</h5>
+                <p class="text-muted">Оформи заказ за пару минут</p>
+            </div>
+        </div>
+        <div class="col-md-3 text-center">
+            <div class="bg-light p-4 rounded-3">
+                <i class="bi bi-cash-stack" style="font-size: 3rem; color: #0d6efd;"></i>
+                <h5 class="mt-3">Забери и оплати</h5>
+                <p class="text-muted">В удобном салоне</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Преимущества -->
+<div class="container mb-5">
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <i class="bi bi-phone" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-2">Актуальные остатки онлайн</h5>
+                    <p class="card-text text-muted">Данные синхронизируются с учётной системой, вы видите реальное наличие товаров</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <i class="bi bi-shop" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-2">Самовывоз из любого салона</h5>
+                    <p class="card-text text-muted">Заберите товар в ближайшей к вам точке</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <i class="bi bi-credit-card" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-2">Оплата на месте</h5>
+                    <p class="card-text text-muted">Оплатите при получении — безопасно и удобно</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <i class="bi bi-truck" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-2">Перемещение между точками</h5>
+                    <p class="card-text text-muted">Если товара нет в вашем салоне — мы привезём</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Контакты и информация -->
+<div class="container mb-5">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="bg-light p-4 rounded-3">
+                <h4><i class="bi bi-telephone"></i> Контакты</h4>
+                <p>Телефон: <strong>8-800-XXX-XX-XX</strong></p>
+                <p>Email: <strong>support@salonsvyazi.ru</strong></p>
+                <a href="/map" class="btn btn-outline-primary btn-sm">Карта магазинов →</a>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="bg-light p-4 rounded-3">
+                <h4><i class="bi bi-info-circle"></i> Информация для покупателей</h4>
+                <ul class="list-unstyled">
+                    <li><a href="/how-to-order" class="text-decoration-none">📋 Как сделать заказ</a></li>
+                    <li class="mt-2"><a href="/reserve-info" class="text-decoration-none">✅ Как получить резерв</a></li>
+                    <li class="mt-2"><a href="/return-policy" class="text-decoration-none">🔄 Условия возврата</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Часто задаваемые вопросы -->
+<div class="container mb-5">
+    <div class="bg-white border rounded-3 p-4">
+        <h4 class="mb-4"><i class="bi bi-question-circle"></i> Часто задаваемые вопросы</h4>
+        <div class="accordion" id="faqAccordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                        Можно ли зарезервировать товар?
+                    </button>
+                </h2>
+                <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body">
+                        Да, вы можете оформить заказ через сайт, и менеджер подтвердит резерв.
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                        Сколько держится резерв?
+                    </button>
+                </h2>
+                <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body">
+                        Резерв удерживается 24 часа. Если вы не забрали товар — он снова становится доступен.
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                        Можно ли вернуть товар?
+                    </button>
+                </h2>
+                <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body">
+                        Да, в течение 14 дней с момента покупки при сохранении товарного вида.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

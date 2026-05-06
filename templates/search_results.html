@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Поиск: {{ query }}{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Результаты поиска: "{{ query }}"</h1>
+
+{% if results %}
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for product in results %}
+    <div class="col">
+        <div class="card product-card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ product[1] }}</h5>
+                <p class="card-text fw-bold text-primary">{{ product[2] }} ₽</p>
+                <a href="/product/{{ product[0] }}" class="btn btn-sm btn-outline-success">
+                    Наличие в магазинах
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    Ничего не найдено. Попробуйте изменить запрос.
+</div>
+{% endif %}
+
+<div class="mt-4">
+    <a href="/" class="btn btn-secondary">Новый поиск</a>
+</div>
+{% endblock %}

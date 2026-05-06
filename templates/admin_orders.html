@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Управление заказами{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Управление заказами</h1>
+
+    {% if orders %}
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>№ заказа</th>
+                    <th>Клиент</th>
+                    <th>Телефон</th>
+                    <th>Дата</th>
+                    <th>Статус</th>
+                    <th>Сумма</th>
+                    <th>Магазин</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td><strong>{{ order[1] }}</strong></td>
+                    <td>{{ order[2] or 'Не указан' }}</td>
+                    <td>{{ order[3] or 'Не указан' }}</td>
+                    <td>{{ order[4].strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td>
+                        {% if order[5] == 'Новый' %}
+                            <span class="badge bg-primary">Новый</span>
+                        {% elif order[5] == 'Подтвержден' %}
+                            <span class="badge bg-info">Подтвержден</span>
+                        {% elif order[5] == 'Резерв' %}
+                            <span class="badge bg-warning">Резерв</span>
+                        {% elif order[5] == 'Готов к выдаче' %}
+                            <span class="badge bg-success">Готов</span>
+                        {% elif order[5] == 'Выдан' %}
+                            <span class="badge bg-secondary">Выдан</span>
+                        {% elif order[5] == 'Отменен' %}
+                            <span class="badge bg-danger">Отменен</span>
+                        {% else %}
+                            <span class="badge bg-light">{{ order[5] }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ order[6] }} ₽</td>
+                    <td>{{ order[7] }}</td>
+                    <td>
+                        <a href="/admin/order/{{ order[0] }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">Заказов пока нет</div>
+    {% endif %}
+
+    <a href="/" class="btn btn-secondary mt-3">На главную</a>
+</div>
+{% endblock %}

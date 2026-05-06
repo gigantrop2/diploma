@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Управление пользователями{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">👥 Управление пользователями</h1>
+    
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Email</th>
+                    <th>ФИО</th>
+                    <th>Роль</th>
+                    <th>Статус</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user[0] }}</td>
+                    <td>{{ user[1] }}</td>
+                    <td>{{ user[2] or '-' }}</td>
+                    <td>
+                        <form action="/admin/user/{{ user[0] }}/role" method="post" style="display: inline-block;">
+                            <select name="role_select" class="form-select form-select-sm" style="width: auto; display: inline-block;">
+                                <option value="user" {% if not user[3] and not user[4] %}selected{% endif %}>Клиент</option>
+                                <option value="manager" {% if user[4] %}selected{% endif %}>Менеджер</option>
+                                <option value="admin" {% if user[3] %}selected{% endif %}>Администратор</option>
+                            </select>
+                            <input type="hidden" name="is_admin" value="0">
+                            <input type="hidden" name="is_manager" value="0">
+                            <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+                        </form>
+                        </td>
+                    <td>
+                        {% if user[5] %}
+                            <span class="badge bg-success">Активен</span>
+                        {% else %}
+                            <span class="badge bg-danger">Заблокирован</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#resetModal{{ user[0] }}">
+                            🔑 Сброс пароля
+                        </button>
+                        
+                        <!-- Модальное окно сброса пароля -->
+                        <div class="modal fade" id="resetModal{{ user[0] }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form action="/admin/user/{{ user[0] }}/reset_password" method="post">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Сброс пароля для {{ user[1] }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <label class="form-label">Новый пароль</label>
+                                            <input type="text" name="new_password" class="form-control" value="pass123" required>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                            <button type="submit" class="btn btn-warning">Сбросить</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <a href="/admin" class="btn btn-secondary mt-3">← Назад в админку</a>
+</div>
+
+<script>
+    // Обработка смены роли (преобразуем select в checkbox)
+    document.querySelectorAll('form[action*="/role"]').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            let select = this.querySelector('select[name="role_select"]');
+            let role = select.value;
+            this.querySelector('input[name="is_admin"]').value = (role === 'admin') ? '1' : '0';
+            this.querySelector('input[name="is_manager"]').value = (role === 'manager') ? '1' : '0';
+        });
+    });
+</script>
+{% endblock %}

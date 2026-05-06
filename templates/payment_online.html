@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Оплата онлайн{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h3 class="mb-0">💳 Онлайн-оплата</h3>
+            </div>
+            <div class="card-body text-center">
+                <h4>Заказ №{{ order_number }}</h4>
+                <p class="h3 my-4">{{ total_amount }} ₽</p>
+
+                <form method="post" action="/payment/process/{{ order_id }}">
+                    <div class="alert alert-info mb-4">
+                        🔐 Демо-режим: нажмите «Оплатить» для имитации
+                    </div>
+
+                    <button type="submit" class="btn btn-success btn-lg w-100">Оплатить {{ total_amount }} ₽</button>
+                </form>
+
+                <a href="/payment" class="btn btn-link mt-3">← Назад к способам оплаты</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
