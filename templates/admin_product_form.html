@@ -21,13 +21,26 @@
                             <label class="form-label">Бренд (опционально)</label>
                             <input type="text" name="brand" class="form-control"
                                    value="{{ product[2] if product else '' }}">
-                            <small class="text-muted">Если не указать — определится автоматически</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Цена (₽)</label>
                             <input type="number" step="0.01" name="price" class="form-control"
                                    value="{{ product[3] if product else '' }}" required>
                         </div>
+
+                        <!-- Выбор категории -->
+                        <div class="mb-3">
+                            <label class="form-label">Категория</label>
+                            <select name="category_id" class="form-select">
+                                <option value="">-- Без категории --</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat[0] }}" {% if product and product[4] == cat[0] %}selected{% endif %}>
+                                    {{ cat[1] }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
                         <button type="submit" class="btn btn-primary">Сохранить</button>
                         <a href="/admin/products" class="btn btn-secondary">Отмена</a>
                     </form>

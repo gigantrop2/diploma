@@ -7,31 +7,91 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
+        body {
+            background-color: #F8F9FA;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        /* ШАПКА TELE2 */
+        .navbar-tele2 {
+            background-color: #1A1A1A !important;
+        }
+        .navbar-tele2 .navbar-brand,
+        .navbar-tele2 .nav-link {
+            color: #FFFFFF !important;
+        }
+        .navbar-tele2 .nav-link:hover {
+            color: #0093D0 !important;
+        }
+        /* КНОПКИ TELE2 */
+        .btn-primary {
+            background-color: #0093D0 !important;
+            border: none !important;
+            border-radius: 40px !important;
+            padding: 8px 24px !important;
+            font-weight: 600 !important;
+        }
+        .btn-primary:hover {
+            background-color: #0070A0 !important;
+        }
+        /* КАРТОЧКИ ТОВАРОВ */
         .product-card {
-            transition: transform 0.2s;
-            margin-bottom: 20px;
+            background: white;
+            border-radius: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
         .product-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
         }
-        .store-badge {
+        .price {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #1A1A1A;
+        }
+        .old-price {
+            text-decoration: line-through;
+            color: #999;
             font-size: 0.9rem;
-            margin-right: 5px;
-            margin-bottom: 5px;
+            margin-left: 8px;
         }
-        .store-card {
-            cursor: pointer;
+        .badge-hot {
+            background-color: #DB0F56;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+        /* ПЛАШКИ КАТЕГОРИЙ */
+        .category-pill {
+            background: white;
+            border-radius: 40px;
+            padding: 10px 24px;
             transition: all 0.2s;
+            text-decoration: none;
+            color: #1A1A1A;
+            font-weight: 500;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        .store-card:hover {
-            background-color: #f8f9fa;
+        .category-pill:hover {
+            background: #0093D0;
+            color: white;
+            transform: translateY(-2px);
         }
-        .navbar-brand i {
-            margin-right: 8px;
+        /* ПОДВАЛ */
+        .footer-tele2 {
+            background-color: #1A1A1A;
+            color: #AAAAAA;
+            padding: 40px 0 20px;
+            margin-top: 60px;
         }
-
-        /* Плавающая корзина */
+        .footer-tele2 a {
+            color: #0093D0;
+            text-decoration: none;
+        }
+        /* ПЛАВАЮЩАЯ КОРЗИНА */
         .floating-cart {
             position: fixed;
             bottom: 20px;
@@ -44,26 +104,16 @@
             justify-content: center;
             width: 60px;
             height: 60px;
-            background-color: #007bff;
+            background-color: #0093D0;
             border-radius: 50%;
             color: white;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        }
-        .floating-cart a:hover {
-            background-color: #0056b3;
-            transform: scale(1.05);
-        }
-        .floating-cart i {
-            font-size: 28px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         .cart-badge {
             position: absolute;
             top: -5px;
             right: -5px;
-            background-color: #dc3545;
-            color: white;
+            background-color: #DB0F56;
             border-radius: 50%;
             width: 22px;
             height: 22px;
@@ -71,106 +121,93 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <!-- Навигация -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-        <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="bi bi-phone"></i> Салон связи
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/">Главная</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/products">Товары</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/stores">Магазины</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/map">Карта</a>
-                    </li>
 
-                    {% if session.is_admin or session.is_manager %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="/admin">👑 Админка</a>
-                    </li>
-                    {% endif %}
+<!-- ШАПКА TELE2 -->
+<nav class="navbar navbar-expand-lg navbar-tele2">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">Салон связи</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="/">Главная</a></li>
+                <li class="nav-item"><a class="nav-link" href="/products">Товары</a></li>
+                <li class="nav-item"><a class="nav-link" href="/stores">Магазины</a></li>
+                <li class="nav-item"><a class="nav-link" href="/map">Карта</a></li>
+                {% if session.is_admin or session.is_manager %}
+                <li class="nav-item"><a class="nav-link" href="/admin">Админка</a></li>
+                {% endif %}
+                {% if session.user_id %}
+                <li class="nav-item"><a class="nav-link" href="/profile">{{ session.user_name }}</a></li>
+                <li class="nav-item"><a class="nav-link" href="/logout">Выход</a></li>
+                {% else %}
+                <li class="nav-item"><a class="nav-link" href="/login">Вход</a></li>
+                <li class="nav-item"><a class="nav-link" href="/register">Регистрация</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
 
-                    {% if session.user_id %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="/profile">{{ session.user_name }}</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/logout">Выход</a>
-                        </li>
-                    {% else %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="/login">Вход</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/register">Регистрация</a>
-                        </li>
-                    {% endif %}
-                </ul>
+<!-- ОСНОВНОЙ КОНТЕНТ -->
+<div class="container mt-4">
+    {% block content %}{% endblock %}
+</div>
+
+<!-- ПОДВАЛ TELE2 -->
+<footer class="footer-tele2">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <h5>Салон связи</h5>
+                <p>Мобильные телефоны в салонах твоего города</p>
+            </div>
+            <div class="col-md-4">
+                <h5>Контакты</h5>
+                <p>8-800-XXX-XX-XX<br>support@salonsvyazi.ru</p>
+            </div>
+            <div class="col-md-4">
+                <h5>Информация</h5>
+                <p><a href="/map">Карта магазинов</a></p>
             </div>
         </div>
-    </nav>
-
-    <!-- Основной контент -->
-    <div class="container">
-        {% block content %}{% endblock %}
-    </div>
-
-    <!-- Подвал -->
-    <footer class="bg-light text-center text-muted py-3 mt-5">
-        <div class="container">
+        <div class="text-center mt-3">
             <p class="mb-0">© 2026 Дипломная работа Дроздова В.А.</p>
         </div>
-    </footer>
-
-    <!-- Плавающая корзина (показывается только если есть товары) -->
-    {% if session.user_id %}
-    <div class="floating-cart" id="floatingCart" style="display: none;">
-        <a href="/cart" id="cart-icon">
-            <i class="bi bi-cart"></i>
-            <span class="cart-badge" id="cart-count">0</span>
-        </a>
     </div>
-    {% endif %}
+</footer>
 
-    <script>
-        function updateCartCount() {
-            fetch('/cart/count')
-                .then(response => response.json())
-                .then(data => {
-                    const badge = document.getElementById('cart-count');
-                    const cartDiv = document.getElementById('floatingCart');
-                    if (badge && cartDiv) {
-                        badge.textContent = data.count;
-                        if (data.count > 0) {
-                            cartDiv.style.display = 'block';
-                            badge.style.display = 'flex';
-                        } else {
-                            cartDiv.style.display = 'none';
-                        }
-                    }
-                })
-                .catch(err => console.log('Корзина не загружена'));
-        }
+<!-- ПЛАВАЮЩАЯ КОРЗИНА -->
+{% if session.user_id %}
+<div class="floating-cart" id="floatingCart">
+    <a href="/cart">
+        <i class="bi bi-cart"></i>
+        <span class="cart-badge" id="cart-count">0</span>
+    </a>
+</div>
+{% endif %}
 
-        if (document.getElementById('cart-count')) {
-            updateCartCount();
-        }
-    </script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function updateCartCount() {
+        fetch('/cart/count')
+            .then(res => res.json())
+            .then(data => {
+                const badge = document.getElementById('cart-count');
+                if (badge) {
+                    badge.textContent = data.count;
+                    badge.style.display = data.count > 0 ? 'flex' : 'none';
+                    document.getElementById('floatingCart').style.display = data.count > 0 ? 'block' : 'none';
+                }
+            })
+            .catch(err => console.log('Корзина не загружена'));
+    }
+    if (document.getElementById('cart-count')) updateCartCount();
+</script>
 </body>
 </html>

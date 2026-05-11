@@ -6,10 +6,25 @@ import random
 import string
 from datetime import datetime, timedelta
 from functools import wraps
-
+import qrcode
+import io
+import base64
+from flask import send_file
 app = Flask(__name__)
 app.secret_key = 'diploma-super-secret-key-2026'
 
+
+def generate_qr_code(data):
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    # Конвертируем в base64 для вставки в HTML
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    img_base64 = base64.b64encode(buffered.getvalue()).decode()
+    return f"data:image/png;base64,{img_base64}"
 
 # =====================================================
 # Декораторы для ролей
@@ -88,7 +103,7 @@ def index():
 # =====================================================
 @app.route('/products')
 def products():
-    category = request.args.get('category', '')
+    category_name = request.args.get('category', '')
     sort = request.args.get('sort', 'name_asc')
     search_query = request.args.get('search', '').strip()
     brand = request.args.get('brand', '')
@@ -108,13 +123,17 @@ def products():
     """
     params = []
 
+    if category_name:
+        # Ищем ID категории по имени (включая подкатегории)
+        cur.execute("SELECT category_id FROM categories WHERE category_name = %s", (category_name,))
+        cat = cur.fetchone()
+        if cat:
+            query += " AND p.category_id = %s"
+            params.append(cat[0])
+
     if search_query:
         query += " AND p.product_name ILIKE %s"
         params.append(f'%{search_query}%')
-
-    if category and category.isdigit():
-        query += " AND p.category_id = %s"
-        params.append(category)
 
     if brand:
         query += " AND p.brand = %s"
@@ -138,6 +157,7 @@ def products():
     cur.execute(query, params)
     items = cur.fetchall()
 
+    # Список категорий для фильтра (оставляем для совместимости)
     cur.execute("SELECT category_id, category_name FROM categories ORDER BY category_name")
     categories = cur.fetchall()
 
@@ -151,7 +171,7 @@ def products():
                            products=items,
                            categories=categories,
                            brands=brands,
-                           selected_category=category,
+                           selected_category=category_name,
                            selected_sort=sort,
                            selected_brand=brand,
                            price_min=price_min,
@@ -528,8 +548,10 @@ def checkout():
 def order_detail(order_id):
     if 'user_id' not in session:
         return redirect('/login')
+
     conn = get_connection()
     cur = conn.cursor()
+
     cur.execute("""
         SELECT o.order_id, o.order_number, o.order_date, o.total_amount,
                s.status_name, o.customer_name, o.customer_phone,
@@ -539,19 +561,27 @@ def order_detail(order_id):
         JOIN stores st ON o.target_store_id = st.store_id
         WHERE o.order_id = %s AND o.user_id = %s
     """, (order_id, session['user_id']))
+
     order = cur.fetchone()
+
     if not order:
         return "Заказ не найден", 404
+
     cur.execute("""
         SELECT p.product_name, oi.quantity, oi.price, (oi.quantity * oi.price) as subtotal
         FROM order_items oi
         JOIN products p ON oi.product_id = p.product_id
         WHERE oi.order_id = %s
     """, (order_id,))
+
     items = cur.fetchall()
     cur.close()
     conn.close()
-    return render_template('order_detail.html', order=order, items=items)
+
+    # Генерируем QR-код с номером заказа
+    qr_image = generate_qr_code(f"Заказ #{order[1]}")
+
+    return render_template('order_detail.html', order=order, items=items, qr_image=qr_image)
 
 
 # =====================================================
@@ -710,10 +740,11 @@ def admin_orders():
 
 
 @app.route('/admin/order/<int:order_id>')
-@admin_or_manager_required
+@admin_required
 def admin_order_detail(order_id):
     conn = get_connection()
     cur = conn.cursor()
+
     cur.execute("""
         SELECT o.order_id, o.order_number, o.order_date, o.total_amount,
                s.status_name, o.customer_name, o.customer_phone,
@@ -725,19 +756,27 @@ def admin_order_detail(order_id):
         JOIN users u ON o.user_id = u.user_id
         WHERE o.order_id = %s
     """, (order_id,))
+
     order = cur.fetchone()
+
     if not order:
         return "Заказ не найден", 404
+
     cur.execute("""
         SELECT p.product_name, oi.quantity, oi.price, (oi.quantity * oi.price) as subtotal
         FROM order_items oi
         JOIN products p ON oi.product_id = p.product_id
         WHERE oi.order_id = %s
     """, (order_id,))
+
     items = cur.fetchall()
     cur.close()
     conn.close()
-    return render_template('admin_order_detail.html', order=order, items=items)
+
+    # QR-код для админки
+    qr_image = generate_qr_code(f"Заказ #{order[1]}")
+
+    return render_template('admin_order_detail.html', order=order, items=items, qr_image=qr_image)
 
 
 @app.route('/admin/order/<int:order_id>/status', methods=['POST'])
@@ -787,23 +826,31 @@ def admin_products():
 @app.route('/admin/product/add', methods=['GET', 'POST'])
 @admin_or_manager_required
 def admin_product_add():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Получаем список категорий
+    cur.execute("SELECT category_id, category_name FROM categories ORDER BY category_name")
+    categories = cur.fetchall()
+
     if request.method == 'POST':
         product_name = request.form['product_name']
         brand = request.form.get('brand') or extract_brand(product_name)
         price = float(request.form['price'])
-        conn = get_connection()
-        cur = conn.cursor()
+        category_id = request.form.get('category_id') or None
+
         cur.execute("""
-            INSERT INTO products (product_name, brand, price)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (product_name) DO UPDATE
-            SET brand = EXCLUDED.brand, price = EXCLUDED.price
-        """, (product_name, brand, price))
+            INSERT INTO products (product_name, brand, price, category_id)
+            VALUES (%s, %s, %s, %s)
+        """, (product_name, brand, price, category_id))
         conn.commit()
         cur.close()
         conn.close()
         return redirect('/admin/products')
-    return render_template('admin_product_form.html', title="Добавить товар")
+
+    cur.close()
+    conn.close()
+    return render_template('admin_product_form.html', title="Добавить товар", categories=categories)
 
 
 @app.route('/admin/product/<int:product_id>/edit', methods=['GET', 'POST'])
@@ -811,25 +858,38 @@ def admin_product_add():
 def admin_product_edit(product_id):
     conn = get_connection()
     cur = conn.cursor()
+
+    # Получаем список категорий для выпадающего списка
+    cur.execute("SELECT category_id, category_name FROM categories ORDER BY category_name")
+    categories = cur.fetchall()
+
     if request.method == 'POST':
         product_name = request.form['product_name']
         brand = request.form.get('brand')
         price = float(request.form['price'])
+        category_id = request.form.get('category_id') or None
+
         cur.execute("""
-            UPDATE products SET product_name=%s, brand=%s, price=%s
+            UPDATE products 
+            SET product_name=%s, brand=%s, price=%s, category_id=%s
             WHERE product_id=%s
-        """, (product_name, brand, price, product_id))
+        """, (product_name, brand, price, category_id, product_id))
         conn.commit()
         cur.close()
         conn.close()
         return redirect('/admin/products')
-    cur.execute("SELECT product_id, product_name, brand, price FROM products WHERE product_id=%s", (product_id,))
+
+    cur.execute("SELECT product_id, product_name, brand, price, category_id FROM products WHERE product_id=%s",
+                (product_id,))
     product = cur.fetchone()
     cur.close()
     conn.close()
+
     if not product:
         return "Товар не найден", 404
-    return render_template('admin_product_form.html', title="Редактировать товар", product=product)
+
+    return render_template('admin_product_form.html', title="Редактировать товар", product=product,
+                           categories=categories)
 
 
 @app.route('/admin/product/<int:product_id>/delete', methods=['POST'])
