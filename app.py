@@ -103,7 +103,7 @@ def index():
 # =====================================================
 @app.route('/products')
 def products():
-    category_name = request.args.get('category', '')
+    category_id = request.args.get('category', '')
     sort = request.args.get('sort', 'name_asc')
     search_query = request.args.get('search', '').strip()
     brand = request.args.get('brand', '')
@@ -113,6 +113,7 @@ def products():
     conn = get_connection()
     cur = conn.cursor()
 
+    # Базовый запрос товаров
     query = """
         SELECT p.product_id, p.product_name, p.price, 
                COALESCE(c.category_name, 'Без категории') as category_name,
@@ -123,13 +124,9 @@ def products():
     """
     params = []
 
-    if category_name:
-        # Ищем ID категории по имени (включая подкатегории)
-        cur.execute("SELECT category_id FROM categories WHERE category_name = %s", (category_name,))
-        cat = cur.fetchone()
-        if cat:
-            query += " AND p.category_id = %s"
-            params.append(cat[0])
+    if category_id and category_id.isdigit():
+        query += " AND p.category_id = %s"
+        params.append(int(category_id))
 
     if search_query:
         query += " AND p.product_name ILIKE %s"
@@ -157,11 +154,23 @@ def products():
     cur.execute(query, params)
     items = cur.fetchall()
 
-    # Список категорий для фильтра (оставляем для совместимости)
+    # Список категорий для фильтра
     cur.execute("SELECT category_id, category_name FROM categories ORDER BY category_name")
     categories = cur.fetchall()
 
-    cur.execute("SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL AND brand != '' ORDER BY brand")
+    # Список брендов (НОВЫЙ ЗАПРОС — с учётом выбранной категории)
+    if category_id and category_id.isdigit():
+        cur.execute("""
+            SELECT DISTINCT brand FROM products 
+            WHERE category_id = %s AND brand IS NOT NULL AND brand != ''
+            ORDER BY brand
+        """, (int(category_id),))
+    else:
+        cur.execute("""
+            SELECT DISTINCT brand FROM products 
+            WHERE brand IS NOT NULL AND brand != '' 
+            ORDER BY brand
+        """)
     brands = cur.fetchall()
 
     cur.close()
@@ -171,12 +180,11 @@ def products():
                            products=items,
                            categories=categories,
                            brands=brands,
-                           selected_category=category_name,
+                           selected_category=category_id,
                            selected_sort=sort,
                            selected_brand=brand,
                            price_min=price_min,
                            price_max=price_max)
-
 
 # =====================================================
 # Поиск

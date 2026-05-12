@@ -1,48 +1,125 @@
 {% extends "base.html" %}
 
-{% block title %}Товары{% endblock %}
+{% block title %}Все товары{% endblock %}
 
 {% block content %}
-<!-- ПЛИТКИ КАТЕГОРИЙ (КАК В TELE2) -->
-<div class="mb-5">
-    <div class="d-flex flex-wrap gap-3 justify-content-center">
-        <a href="/products" class="category-pill {% if not request.args.get('category') %}active{% endif %}">Все товары</a>
-        <a href="/products?category=Сенсорные телефоны" class="category-pill">📱 Сенсорные телефоны</a>
-        <a href="/products?category=Кнопочные телефоны" class="category-pill">🔢 Кнопочные телефоны</a>
-        <a href="/products?category=Чехлы" class="category-pill">📱 Чехлы</a>
-        <a href="/products?category=Переходники, кабели" class="category-pill">🔌 Переходники, кабели</a>
-        <a href="/products?category=Зарядные устройства" class="category-pill">⚡ Зарядные устройства</a>
-    </div>
-</div>
-
-<!-- СЕТКА ТОВАРОВ (КАК В TELE2) -->
-<div class="row g-4">
-    {% for product in products %}
-    <div class="col-6 col-md-4 col-lg-3">
-        <div class="product-card h-100 p-3">
-            <div class="text-center position-relative">
-                <!-- Плашка «Новинка» / «Хит» (пока заглушка) -->
-                <div class="position-absolute top-0 start-0">
-                    <span class="badge-hot">Новинка</span>
-                </div>
-                <i class="bi bi-phone" style="font-size: 4rem; color: #CCC;"></i>
-            </div>
-            <div class="mt-3">
-                <h6 class="fw-bold">{{ product[1] }}</h6>
-                <p class="text-muted small mb-2">{{ product[3] or 'Без категории' }}</p>
-                <div class="d-flex align-items-baseline flex-wrap">
-                    <span class="price">{{ product[2] }} ₽</span>
-                    <!-- старая цена для акций (пока пусто) -->
-                    <!-- <span class="old-price">5 990 ₽</span> -->
-                </div>
-                <a href="/product/{{ product[0] }}" class="btn btn-primary w-100 mt-3">Подробнее</a>
+<div class="row">
+    <!-- Боковая панель с фильтрами -->
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Фильтры</h5>
+                
+                <form method="get" action="/products">
+                    <!-- Сохраняем поисковый запрос -->
+                    <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Категория</label>
+                        <select name="category" class="form-select">
+                            <option value="">Все категории</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat[0] }}" {% if selected_category|string == cat[0]|string %}selected{% endif %}>
+                                {{ cat[1] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Бренд</label>
+                        <select name="brand" class="form-select">
+                            <option value="">Все бренды</option>
+                            {% for b in brands %}
+                            <option value="{{ b[0] }}" {% if selected_brand == b[0] %}selected{% endif %}>
+                                {{ b[0] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Цена</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="number" name="price_min" class="form-control" 
+                                       placeholder="от" value="{{ price_min }}">
+                            </div>
+                            <div class="col-6">
+                                <input type="number" name="price_max" class="form-control" 
+                                       placeholder="до" value="{{ price_max }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">Применить</button>
+                    <a href="/products" class="btn btn-secondary w-100 mt-2">Сбросить</a>
+                </form>
             </div>
         </div>
     </div>
-    {% else %}
-    <div class="col-12 text-center py-5">
-        <p class="text-muted">Товаров не найдено</p>
+    
+    <!-- Основная часть с товарами -->
+    <div class="col-md-9">
+        <!-- Поиск и сортировка -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <form action="/products" method="get" class="d-flex">
+                            <input type="text" name="search" class="form-control me-2" 
+                                   placeholder="Поиск по названию..." 
+                                   value="{{ request.args.get('search', '') }}">
+                            <!-- Сохраняем остальные параметры -->
+                            <input type="hidden" name="category" value="{{ selected_category }}">
+                            <input type="hidden" name="brand" value="{{ selected_brand }}">
+                            <input type="hidden" name="price_min" value="{{ price_min }}">
+                            <input type="hidden" name="price_max" value="{{ price_max }}">
+                            <button type="submit" class="btn btn-primary">Найти</button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <form action="/products" method="get" class="d-flex">
+                            <select name="sort" class="form-select me-2">
+                                <option value="name_asc" {% if selected_sort == 'name_asc' %}selected{% endif %}>По названию (А-Я)</option>
+                                <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Сначала дешёвые</option>
+                                <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Сначала дорогие</option>
+                            </select>
+                            <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
+                            <input type="hidden" name="category" value="{{ selected_category }}">
+                            <input type="hidden" name="brand" value="{{ selected_brand }}">
+                            <input type="hidden" name="price_min" value="{{ price_min }}">
+                            <input type="hidden" name="price_max" value="{{ price_max }}">
+                            <button type="submit" class="btn btn-outline-secondary">Сортировать</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Результаты -->
+        {% if products %}
+        <div class="row g-4">
+            {% for product in products %}
+            <div class="col-md-4 col-sm-6">
+                <div class="card product-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ product[1] }}</h5>
+                        {% if product[3] %}
+                        <p class="card-text text-muted small">{{ product[3] }}</p>
+                        {% endif %}
+                        <p class="price">{{ product[2] }} ₽</p>
+                        <a href="/product/{{ product[0] }}" class="btn btn-primary w-100">Подробнее</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info text-center">
+            Товаров не найдено. Попробуйте изменить параметры поиска.
+        </div>
+        {% endif %}
     </div>
-    {% endfor %}
 </div>
 {% endblock %}
