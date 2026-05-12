@@ -4,16 +4,16 @@ from psycopg2 import OperationalError
 
 
 def get_connection():
-    # Пробуем взять переменную окружения (облако Render)
     database_url = os.environ.get('DATABASE_URL')
 
     if database_url:
         try:
-            return psycopg2.connect(database_url)
+            conn = psycopg2.connect(database_url)
+            conn.set_client_encoding('UTF8')
+            return conn
         except OperationalError:
             return None
 
-    # Если переменной нет — работаем локально
     try:
         conn = psycopg2.connect(
             host="localhost",
@@ -22,6 +22,7 @@ def get_connection():
             user="postgres",
             password="11111"
         )
+        conn.set_client_encoding('UTF8')
         return conn
     except OperationalError:
         return None
