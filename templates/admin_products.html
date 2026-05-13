@@ -28,10 +28,17 @@
                     <td>{{ product[2] or '-' }}</td>
                     <td>{{ product[3] }} ₽</td>
                     <td>
-                        <a href="/admin/product/{{ product[0] }}/edit" class="btn btn-sm btn-warning">✏️</a>
-                        <form action="/admin/product/{{ product[0] }}/delete" method="post" style="display: inline-block;" onsubmit="return confirm('Удалить товар?')">
-                            <button type="submit" class="btn btn-sm btn-danger">🗑️</button>
-                        </form>
+                        {% if product[4] is none or product[4] == product[0] %}
+                            {# Это главный товар или не в группе — показываем все кнопки #}
+                            <a href="/admin/product/{{ product[0] }}/edit" class="btn btn-sm btn-warning">✏️</a>
+                            <a href="/admin/product/{{ product[0] }}/attributes" class="btn btn-sm btn-info">📋</a>
+                            <form action="/admin/product/{{ product[0] }}/delete" method="post" style="display: inline-block;">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Удалить?')">🗑️</button>
+                            </form>
+                        {% else %}
+                            {# Это неглавный товар — только просмотр (ведёт на главный) #}
+                            <a href="/admin/product/{{ product[4] }}/edit" class="btn btn-sm btn-secondary">🔗 Перейти к главному</a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}

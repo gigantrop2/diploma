@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Характеристики товара{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Характеристики: {{ product[1] }}</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% for attr in attributes %}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">{{ attr[1] }}</label>
+                            {% if attr[1] in ['Цвет', 'Встроенная память'] %}
+                            <select name="attr_{{ attr[0] }}" class="form-select">
+                                <option value="">-- Выберите {{ attr[1]|lower }} --</option>
+                                {% for value in attr_values[attr[0]] %}
+                                <option value="{{ value }}" {% if attr[0] in current and current[attr[0]] == value %}selected{% endif %}>
+                                    {{ value }}
+                                </option>
+                                {% endfor %}
+                                <option value="__other__">Другое...</option>
+                            </select>
+                            <input type="text" name="attr_{{ attr[0] }}_other" class="form-control mt-2"
+                                   placeholder="Введите свой вариант" style="display: none;">
+                            {% else %}
+                            <input type="text" name="attr_{{ attr[0] }}" class="form-control"
+                                   value="{{ current[attr[0]] if attr[0] in current else '' }}">
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        <button type="submit" class="btn btn-primary">Сохранить характеристики</button>
+                        <a href="/admin/products" class="btn btn-secondary">Назад</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('select').forEach(select => {
+        const otherInput = select.nextElementSibling;
+        if (otherInput && otherInput.type === 'text') {
+            select.addEventListener('change', function() {
+                if (this.value === '__other__') {
+                    otherInput.style.display = 'block';
+                    otherInput.required = true;
+                } else {
+                    otherInput.style.display = 'none';
+                    otherInput.required = false;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -168,6 +168,21 @@
                         </select>
                     </div>
 
+                    <!-- Фильтр по цвету -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Цвет</label>
+                        <select name="color" class="form-select form-select-sm" onchange="submitFilter()">
+                            <option value="">Все цвета</option>
+                            <option value="Black">Черный</option>
+                            <option value="White">Белый</option>
+                            <option value="Gold">Золотой</option>
+                            <option value="Blue">Синий</option>
+                            <option value="Red">Красный</option>
+                            <option value="Green">Зеленый</option>
+                            <option value="Purple">Фиолетовый</option>
+                        </select>
+                    </div>
+
                     <button type="submit" class="btn btn-primary w-100 rounded-pill">Показать товары</button>
                     <a href="/products" class="btn btn-outline-secondary w-100 mt-2 rounded-pill" id="resetBtn">Сбросить</a>
                 </form>

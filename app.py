@@ -9,6 +9,7 @@ from functools import wraps
 import qrcode
 import io
 import base64
+import json
 from flask import send_file
 app = Flask(__name__)
 app.secret_key = 'diploma-super-secret-key-2026'
@@ -256,24 +257,63 @@ def search():
 def product_detail(product_id):
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT product_id, product_name, price FROM products WHERE product_id = %s", (product_id,))
+
+    # Проверяем, не является ли товар неглавным
+    cur.execute("SELECT group_id FROM products WHERE product_id = %s", (product_id,))
+    group_result = cur.fetchone()
+    if group_result and group_result[0] is not None and group_result[0] != product_id:
+        cur.close()
+        conn.close()
+        return redirect(f'/product/{group_result[0]}')
+
+    # Получаем главный товар (включая group_name)
+    cur.execute("SELECT product_id, product_name, price, params, group_name FROM products WHERE product_id = %s",
+                (product_id,))
     product = cur.fetchone()
+
     if not product:
         return "Товар не найден", 404
+
+    # params уже словарь (JSONB)
+    main_params = product[3] if product[3] else {}
+
+    # Получаем все товары из группы
+    cur.execute("""
+        SELECT product_id, product_name, price, params 
+        FROM products 
+        WHERE group_id = %s OR product_id = %s
+    """, (product_id, product_id))
+    group_products = cur.fetchall()
+
+    # Собираем параметры для отображения на странице
+    variants = {}
+    for p in group_products:
+        params = p[3] if p[3] else {}
+        for key, value in params.items():
+            if key not in variants:
+                variants[key] = []
+            if not any(v['value'] == value for v in variants[key]):
+                variants[key].append({'value': value, 'product_id': p[0]})
+
+    # Получаем остатки для текущего товара
     cur.execute("""
         SELECT s.store_id, s.store_name, s.city, s.address, 
                sb.quantity, sb.reserved, 
-               (sb.quantity - sb.reserved) as available,
-               s.latitude, s.longitude
+               (sb.quantity - sb.reserved) as available
         FROM stock_balances sb
         JOIN stores s ON sb.store_id = s.store_id
         WHERE sb.product_id = %s AND sb.quantity > 0
         ORDER BY s.city, s.store_name
     """, (product_id,))
     stocks = cur.fetchall()
+
     cur.close()
     conn.close()
-    return render_template('product_detail.html', product=product, stocks=stocks)
+
+    return render_template('product_detail.html',
+                           product=product,
+                           stocks=stocks,
+                           variants=variants)
 
 
 # =====================================================
@@ -462,6 +502,42 @@ def add_to_cart():
         conn.close()
     return redirect('/cart')
 
+
+# =====================================================
+# API: получение остатков и цены для выбранного варианта товара
+# =====================================================
+@app.route('/get_stocks/<int:product_id>')
+def get_stocks(product_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT price FROM products WHERE product_id = %s", (product_id,))
+    price = cur.fetchone()[0]
+
+    cur.execute("""
+        SELECT s.store_id, s.store_name, s.city, s.address, 
+               (sb.quantity - sb.reserved) as available,
+               s.latitude, s.longitude
+        FROM stock_balances sb
+        JOIN stores s ON sb.store_id = s.store_id
+        WHERE sb.product_id = %s AND sb.quantity > 0
+    """, (product_id,))
+
+    stocks = []
+    for row in cur.fetchall():
+        stocks.append({
+            'id': row[0],
+            'name': row[1],
+            'city': row[2],
+            'address': row[3],
+            'quantity': row[4],
+            'latitude': row[5],
+            'longitude': row[6]
+        })
+
+    cur.close()
+    conn.close()
+    return jsonify({'price': price, 'stocks': stocks})
 
 @app.route('/cart')
 def cart():
@@ -864,7 +940,7 @@ def update_order_status(order_id):
 def admin_products():
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("SELECT product_id, product_name, brand, price FROM products ORDER BY product_name")
+    cur.execute("SELECT product_id, product_name, brand, price, group_id FROM products ORDER BY product_name")
     products = cur.fetchall()
     cur.close()
     conn.close()
@@ -876,8 +952,6 @@ def admin_products():
 def admin_product_add():
     conn = get_connection()
     cur = conn.cursor()
-
-    # Получаем список категорий
     cur.execute("SELECT category_id, category_name FROM categories ORDER BY category_name")
     categories = cur.fetchall()
 
@@ -886,11 +960,12 @@ def admin_product_add():
         brand = request.form.get('brand') or extract_brand(product_name)
         price = float(request.form['price'])
         category_id = request.form.get('category_id') or None
+        specifications = request.form.get('specifications') or None  # 👈 ДОБАВИТЬ ЭТУ СТРОКУ
 
         cur.execute("""
-            INSERT INTO products (product_name, brand, price, category_id)
-            VALUES (%s, %s, %s, %s)
-        """, (product_name, brand, price, category_id))
+            INSERT INTO products (product_name, brand, price, category_id, specifications)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (product_name, brand, price, category_id, specifications))
         conn.commit()
         cur.close()
         conn.close()
@@ -906,8 +981,6 @@ def admin_product_add():
 def admin_product_edit(product_id):
     conn = get_connection()
     cur = conn.cursor()
-
-    # Получаем список категорий для выпадающего списка
     cur.execute("SELECT category_id, category_name FROM categories ORDER BY category_name")
     categories = cur.fetchall()
 
@@ -916,19 +989,20 @@ def admin_product_edit(product_id):
         brand = request.form.get('brand')
         price = float(request.form['price'])
         category_id = request.form.get('category_id') or None
+        specifications = request.form.get('specifications') or None  # 👈 ДОБАВИТЬ ЭТУ СТРОКУ
 
         cur.execute("""
             UPDATE products 
-            SET product_name=%s, brand=%s, price=%s, category_id=%s
+            SET product_name=%s, brand=%s, price=%s, category_id=%s, specifications=%s
             WHERE product_id=%s
-        """, (product_name, brand, price, category_id, product_id))
+        """, (product_name, brand, price, category_id, specifications, product_id))
         conn.commit()
         cur.close()
         conn.close()
         return redirect('/admin/products')
 
-    cur.execute("SELECT product_id, product_name, brand, price, category_id FROM products WHERE product_id=%s",
-                (product_id,))
+    # Добавляем specifications в SELECT
+    cur.execute("SELECT product_id, product_name, brand, price, category_id, specifications FROM products WHERE product_id=%s", (product_id,))
     product = cur.fetchone()
     cur.close()
     conn.close()
@@ -936,8 +1010,7 @@ def admin_product_edit(product_id):
     if not product:
         return "Товар не найден", 404
 
-    return render_template('admin_product_form.html', title="Редактировать товар", product=product,
-                           categories=categories)
+    return render_template('admin_product_form.html', title="Редактировать товар", product=product, categories=categories)
 
 
 @app.route('/admin/product/<int:product_id>/delete', methods=['POST'])
@@ -951,6 +1024,72 @@ def admin_product_delete(product_id):
     conn.close()
     return redirect('/admin/products')
 
+
+# =====================================================
+# УПРАВЛЕНИЕ ХАРАКТЕРИСТИКАМИ ТОВАРА (цвет, память и т.д.)
+# =====================================================
+@app.route('/admin/product/<int:product_id>/attributes', methods=['GET', 'POST'])
+@admin_or_manager_required
+def admin_product_attributes(product_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Получаем товар
+    cur.execute("SELECT product_id, product_name FROM products WHERE product_id = %s", (product_id,))
+    product = cur.fetchone()
+    if not product:
+        return "Товар не найден", 404
+
+    # Получаем все атрибуты
+    cur.execute("SELECT attr_id, attr_name FROM attributes ORDER BY attr_id")
+    attributes = cur.fetchall()
+
+    # Получаем текущие значения
+    cur.execute("SELECT attr_id, attr_value FROM product_attributes WHERE product_id = %s", (product_id,))
+    current = {row[0]: row[1] for row in cur.fetchall()}
+
+    # Собираем возможные значения для select'ов
+    attr_values = {}
+    for attr in attributes:
+        cur.execute("""
+            SELECT DISTINCT attr_value FROM product_attributes 
+            WHERE attr_id = %s AND attr_value IS NOT NULL AND attr_value != ''
+            LIMIT 20
+        """, (attr[0],))
+        attr_values[attr[0]] = [row[0] for row in cur.fetchall()]
+
+    if request.method == 'POST':
+        # Удаляем старые значения
+        cur.execute("DELETE FROM product_attributes WHERE product_id = %s", (product_id,))
+
+        # Вставляем новые
+        for attr in attributes:
+            attr_id = attr[0]
+            value = request.form.get(f'attr_{attr_id}', '').strip()
+
+            # Проверяем вариант "Другое"
+            if request.form.get(f'attr_{attr_id}') == '__other__':
+                value = request.form.get(f'attr_{attr_id}_other', '').strip()
+
+            if value:
+                cur.execute("""
+                    INSERT INTO product_attributes (product_id, attr_id, attr_value)
+                    VALUES (%s, %s, %s)
+                """, (product_id, attr_id, value))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect('/admin/products')
+
+    cur.close()
+    conn.close()
+
+    return render_template('admin_product_attributes.html',
+                           product=product,
+                           attributes=attributes,
+                           current=current,
+                           attr_values=attr_values)
 
 # ---------- Управление пользователями (только админ) ----------
 @app.route('/admin/users')
@@ -1003,6 +1142,103 @@ def admin_user_reset_password(user_id):
     conn.close()
     return redirect('/admin/users')
 
+
+@app.route('/admin/merge_products', methods=['GET', 'POST'])
+@admin_required
+def admin_merge_products():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Получаем все товары
+    cur.execute("SELECT product_id, product_name, price FROM products ORDER BY product_name")
+    products = cur.fetchall()
+
+    # Получаем все группы (товары, на которые есть ссылки в group_id)
+    cur.execute("""
+        SELECT p.product_id, p.product_name, p.price, p.params, p.group_name
+        FROM products p
+        WHERE p.product_id IN (SELECT DISTINCT group_id FROM products WHERE group_id IS NOT NULL)
+        ORDER BY p.product_name
+    """)
+    groups = cur.fetchall()
+
+    if request.method == 'POST':
+        main_id = request.form.get('main_product_id')
+        selected_ids = request.form.getlist('in_group')
+        group_name = request.form.get('group_name', '').strip()
+
+        if main_id and selected_ids:
+            # Добавляем главный в группу, если его нет
+            if main_id not in selected_ids:
+                selected_ids.append(main_id)
+
+            import json
+
+            # Сохраняем название группы для главного товара
+            if group_name:
+                cur.execute("UPDATE products SET group_name = %s WHERE product_id = %s", (group_name, main_id))
+
+            # Для каждого выбранного товара собираем параметры
+            for pid in selected_ids:
+                params = {}
+                for key in request.form:
+                    if key.startswith(f'param_key_{pid}_'):
+                        idx = key.split('_')[-1]
+                        param_key = request.form.get(f'param_key_{pid}_{idx}', '').strip()
+                        param_value = request.form.get(f'param_value_{pid}_{idx}', '').strip()
+                        if param_key and param_value:
+                            params[param_key] = param_value
+
+                cur.execute("""
+                    UPDATE products 
+                    SET group_id = %s, params = %s 
+                    WHERE product_id = %s
+                """, (main_id, json.dumps(params, ensure_ascii=False), pid))
+
+            conn.commit()
+
+        cur.close()
+        conn.close()
+        return redirect('/admin/products')
+
+    cur.close()
+    conn.close()
+    return render_template('admin_merge_products.html', products=products, groups=groups)
+
+
+@app.route('/admin/get_group/<int:group_id>')
+@admin_required
+def get_group(group_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Получаем все товары в группе
+    cur.execute("""
+        SELECT product_id, product_name, params 
+        FROM products 
+        WHERE group_id = %s OR product_id = %s
+    """, (group_id, group_id))
+    products_in_group = cur.fetchall()
+
+    group_product_ids = [p[0] for p in products_in_group]
+    product_params = {}
+    for p in products_in_group:
+        product_params[p[0]] = p[2] if p[2] else {}
+
+    # Получаем название группы
+    cur.execute("SELECT group_name FROM products WHERE product_id = %s", (group_id,))
+    group_name_row = cur.fetchone()
+    group_name = group_name_row[0] if group_name_row else None
+
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        'main_product_id': group_id,
+        'group_name': group_name,
+        'group_product_ids': group_product_ids,
+        'product_params': product_params
+    })
 
 # =====================================================
 # Админка: загрузка CSV (простая, без проверок)

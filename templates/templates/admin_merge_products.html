@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Объединение товаров в группы{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">🔗 Объединение товаров в группу</h3>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Главный товар (название группы будет из него)</label>
+                    <select name="main_product_id" class="form-select" required>
+                        <option value="">-- Выберите главный товар --</option>
+                        {% for product in products %}
+                        <option value="{{ product[0] }}">
+                            {{ product[1] }} - {{ product[2] }} ₽
+                            {% if product[3] %} (Арт: {{ product[3] }}){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">Этот товар будет отображаться на сайте, остальные станут его вариантами</small>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Добавить в группу (можно выбрать несколько)</label>
+                    <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;">
+                        {% for product in products %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="product_ids" value="{{ product[0] }}" id="prod_{{ product[0] }}">
+                            <label class="form-check-label" for="prod_{{ product[0] }}">
+                                {{ product[1] }} - {{ product[2] }} ₽
+                                {% if product[3] %} <span class="text-muted">({{ product[3] }})</span>{% endif %}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <small class="text-muted">Выберите товары, которые нужно объединить с главным</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Объединить в группу</button>
+                <a href="/admin" class="btn btn-secondary">Отмена</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

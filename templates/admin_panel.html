@@ -32,15 +32,26 @@
             </div>
         </div>
         {% endif %}
-        
+
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-link" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Объединение товаров</h5>
+                    <p class="card-text">Сгруппировать одинаковые товары (цвета, память)</p>
+                    <a href="/admin/merge_products" class="btn btn-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+
         {% if session.is_admin or session.is_manager %}
         <div class="col-md-4 mb-3">
             <div class="card">
                 <div class="card-body text-center">
-                    <i class="bi bi-filetype-csv" style="font-size: 3rem;"></i>
-                    <h5 class="card-title mt-3">📂 Простой CSV</h5>
-                    <p class="card-text">Загрузка товаров из CSV</p>
-                    <a href="/admin/upload_csv_simple" class="btn btn-primary">Перейти</a>
+                    <i class="bi bi-link" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Объединение товаров</h5>
+                    <p class="card-text">Сгруппировать товары по цветам/памяти</p>
+                    <a href="/admin/merge_products" class="btn btn-primary">Перейти</a>
                 </div>
             </div>
         </div>

@@ -40,7 +40,11 @@
                                 {% endfor %}
                             </select>
                         </div>
-
+                        <div class="mb-3">
+                            <label class="form-label">Характеристики (JSON)</label>
+                            <textarea name="specifications" class="form-control" rows="5" placeholder='{"Диагональ экрана": "6.7\"", "Встроенная память": "256 ГБ", "Операционная система": "Android 16"}'>{{ product[5] if product else '' }}</textarea>
+                            <small class="text-muted">Формат JSON: {"Название": "Значение"}</small>
+                        </div>
                         <button type="submit" class="btn btn-primary">Сохранить</button>
                         <a href="/admin/products" class="btn btn-secondary">Отмена</a>
                     </form>

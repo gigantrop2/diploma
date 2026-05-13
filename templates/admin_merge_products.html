@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Объединение товаров{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">🔗 Объединение товаров в группу</h3>
+        </div>
+        <div class="card-body">
+            <form method="post" id="mergeForm">
+                <!-- Выбор существующей группы -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Или выберите существующую группу для редактирования</label>
+                    <div class="d-flex gap-2">
+                        <select name="edit_group_id" class="form-select" id="editGroupSelect" style="flex:1;">
+                            <option value="">-- Выберите группу --</option>
+                            {% for group in groups %}
+                            <option value="{{ group[0] }}">{% if group[4] %}{{ group[4] }}{% else %}{{ group[1] }}{% endif %} (ID: {{ group[0] }})</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn btn-info" onclick="loadGroup()">Загрузить</button>
+                    </div>
+                </div>
+
+                <hr>
+                <h5 class="text-center">— ИЛИ —</h5>
+                <hr>
+
+                <!-- Главный товар -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Главный товар (будет отображаться на сайте)</label>
+                    <select name="main_product_id" class="form-select" required id="mainProductSelect">
+                        <option value="">-- Выберите --</option>
+                        {% for product in products %}
+                        <option value="{{ product[0] }}">{{ product[1] }} ({{ product[2] }} ₽)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Название группы -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Название группы (показывается покупателям)</label>
+                    <input type="text" name="group_name" id="groupNameInput" class="form-control" placeholder="Например: BQ 1800L One">
+                    <small class="text-muted">Если не заполнить, будет использовано оригинальное название товара</small>
+                </div>
+
+                <!-- Таблица с гибкими параметрами -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Параметры товаров</label>
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="params-table">
+                            <thead>
+                                <tr>
+                                    <th>Товар</th>
+                                    <th>Параметры (ключ: значение)</th>
+                                    <th>В группе?</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in products %}
+                                <tr id="product-row-{{ product[0] }}">
+                                    <td>
+                                        {{ product[1] }}<br>
+                                        <small class="text-muted">{{ product[2] }} ₽</small>
+                                    </td>
+                                    <td>
+                                        <div class="param-group" data-product-id="{{ product[0] }}">
+                                            <button type="button" class="btn btn-sm btn-success add-param-btn mb-2" data-pid="{{ product[0] }}">+ Добавить параметр</button>
+                                            <div class="params-list" id="params-{{ product[0] }}">
+                                                <!-- Сюда будут добавляться поля -->
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <input type="checkbox" name="in_group" value="{{ product[0] }}" class="form-check-input group-checkbox">
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <small class="text-muted">Отметьте товары в группу. Для каждого добавьте параметры (например, "Цвет: Синий", "Память: 128 ГБ")</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Сохранить группу</button>
+                <a href="/admin" class="btn btn-secondary">Отмена</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let productParams = {};
+
+    function addParamField(productId) {
+        if (!productParams[productId]) {
+            productParams[productId] = [];
+        }
+        const index = productParams[productId].length;
+        productParams[productId].push({key: '', value: ''});
+
+        const container = document.getElementById(`params-${productId}`);
+        const div = document.createElement('div');
+        div.className = 'param-row mb-2';
+        div.setAttribute('data-idx', index);
+        div.innerHTML = `
+            <div class="row g-2">
+                <div class="col-5">
+                    <input type="text" name="param_key_${productId}_${index}" class="form-control" placeholder="Ключ (например: Цвет)">
+                </div>
+                <div class="col-5">
+                    <input type="text" name="param_value_${productId}_${index}" class="form-control" placeholder="Значение (например: Синий)">
+                </div>
+                <div class="col-2">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeParamField(${productId}, ${index})">✖</button>
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+    }
+
+    function addParamFieldWithValue(productId, key, value) {
+        if (!productParams[productId]) {
+            productParams[productId] = [];
+        }
+        const index = productParams[productId].length;
+        productParams[productId].push({key: key, value: value});
+
+        const container = document.getElementById(`params-${productId}`);
+        const div = document.createElement('div');
+        div.className = 'param-row mb-2';
+        div.setAttribute('data-idx', index);
+        div.innerHTML = `
+            <div class="row g-2">
+                <div class="col-5">
+                    <input type="text" name="param_key_${productId}_${index}" class="form-control" value="${key.replace(/"/g, '&quot;')}">
+                </div>
+                <div class="col-5">
+                    <input type="text" name="param_value_${productId}_${index}" class="form-control" value="${value.replace(/"/g, '&quot;')}">
+                </div>
+                <div class="col-2">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeParamField(${productId}, ${index})">✖</button>
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+    }
+
+    function removeParamField(productId, index) {
+        const container = document.getElementById(`params-${productId}`);
+        const rows = container.querySelectorAll('.param-row');
+        if (rows[index]) {
+            rows[index].remove();
+            productParams[productId] = productParams[productId].filter((_, i) => i !== index);
+        }
+    }
+
+    function loadGroup() {
+        const groupId = document.getElementById('editGroupSelect').value;
+        if (!groupId) return;
+
+        fetch(`/admin/get_group/${groupId}`)
+            .then(res => res.json())
+            .then(data => {
+                // Устанавливаем главный товар
+                document.getElementById('mainProductSelect').value = data.main_product_id;
+                // Устанавливаем название группы
+                document.getElementById('groupNameInput').value = data.group_name || '';
+
+                // Очищаем все параметры
+                document.querySelectorAll('.param-group').forEach(group => {
+                    const pid = group.dataset.productId;
+                    const container = document.getElementById(`params-${pid}`);
+                    if (container) container.innerHTML = '';
+                    productParams[pid] = [];
+                });
+
+                // Снимаем все галочки
+                document.querySelectorAll('.group-checkbox').forEach(cb => {
+                    cb.checked = false;
+                });
+
+                // Отмечаем товары в группе
+                data.group_product_ids.forEach(pid => {
+                    const cb = document.querySelector(`input[name="in_group"][value="${pid}"]`);
+                    if (cb) cb.checked = true;
+                });
+
+                // Заполняем параметры для каждого товара
+                for (const [productId, params] of Object.entries(data.product_params)) {
+                    for (const [key, value] of Object.entries(params)) {
+                        addParamFieldWithValue(parseInt(productId), key, value);
+                    }
+                }
+            });
+    }
+
+    document.querySelectorAll('.add-param-btn').forEach(btn => {
+        const pid = btn.dataset.pid;
+        btn.addEventListener('click', () => addParamField(pid));
+    });
+</script>
+{% endblock %}

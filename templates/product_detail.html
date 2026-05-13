@@ -1,40 +1,287 @@
 {% extends "base.html" %}
 
-{% block title %}{{ product[1] }}{% endblock %}
+{% block title %}{% if product[4] %}{{ product[4] }}{% else %}{{ product[1] }}{% endif %}{% endblock %}
 
 {% block content %}
 <div class="row">
-    <div class="col-md-8 mx-auto">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h1 class="h3 mb-3">{{ product[1] }}</h1>
-                <p class="price display-6 fw-bold mb-4">{{ product[2] }} ₽</p>
-
-                <h5 class="mb-3">Наличие в магазинах</h5>
-                <div class="list-group mb-4">
-                    {% for store in stocks %}
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>{{ store[1] }}</strong><br>
-                            <small class="text-muted">{{ store[2] }}, {{ store[3] }}</small>
+    <div class="col-lg-10 mx-auto">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="row">
+                    <!-- Левая колонка: фото -->
+                    <div class="col-md-4 text-center mb-4 mb-md-0">
+                        <div class="bg-light rounded-4 p-4" style="min-height: 250px; display: flex; align-items: center; justify-content: center;">
+                            <img src="https://via.placeholder.com/200x200?text=📱+Фото+товара"
+                                 alt="Фото товара"
+                                 class="img-fluid"
+                                 style="max-height: 200px; object-fit: contain;">
                         </div>
-                        <div>
-                            <span class="badge bg-success">{{ store[6] }} шт.</span>
-                            <form action="/add_to_cart" method="post" class="d-inline-block ms-2">
-                                <input type="hidden" name="product_id" value="{{ product[0] }}">
-                                <input type="hidden" name="store_id" value="{{ store[0] }}">
-                                <input type="hidden" name="quantity" value="1">
-                                <input type="hidden" name="price" value="{{ product[2] }}">
-                                <button class="btn btn-sm btn-primary">В корзину</button>
-                            </form>
+                        <div class="mt-3">
+                            <small class="text-muted">Артикул: {{ product[6] if product[6] else '—' }}</small>
                         </div>
                     </div>
-                    {% endfor %}
-                </div>
 
-                <a href="/products" class="btn btn-outline-secondary">← Назад к товарам</a>
+                    <!-- Правая колонка: информация -->
+                    <div class="col-md-8">
+                        <!-- Название -->
+                        <h1 class="h2 fw-bold mb-2">
+                            {% if product[4] %}
+                                {{ product[4] }}
+                            {% else %}
+                                {{ product[1] }}
+                            {% endif %}
+                        </h1>
+
+                        <!-- Бренд и рейтинг -->
+                        <div class="mb-3">
+                            <span class="badge bg-primary rounded-pill">{{ product[7] if product[7] else 'Бренд не указан' }}</span>
+                            <span class="ms-2 text-warning">★★★★★</span>
+                            <span class="text-muted ms-1">(0 отзывов)</span>
+                        </div>
+
+                        <!-- Кружочки параметров (цвет, память) -->
+                        {% if variants %}
+                            {% for param_name, param_values in variants.items() %}
+                            <div class="mb-3">
+                                <label class="fw-semibold mb-2">{{ param_name }}:</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% for v in param_values %}
+                                    <button class="btn btn-outline-secondary rounded-pill variant-btn px-3"
+                                            data-product-id="{{ v.product_id }}"
+                                            data-value="{{ v.value }}">
+                                        {{ v.value }}
+                                    </button>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <!-- Цена -->
+                        <div class="mb-3 mt-4">
+                            <span class="fw-bold text-primary" style="font-size: 2rem;" id="product-price">{{ product[2] }}</span>
+                            <span class="text-muted ms-2">₽</span>
+                            {% if product[2] > 10000 %}
+                            <span class="badge bg-danger ms-2">-20% по акции</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Кнопка в корзину и количество -->
+                        <div class="d-flex gap-2 mb-4">
+                            <div class="input-group" style="width: 120px;">
+                                <button class="btn btn-outline-secondary" type="button" onclick="changeQuantity(-1)">-</button>
+                                <input type="number" id="quantity" value="1" min="1" class="form-control text-center">
+                                <button class="btn btn-outline-secondary" type="button" onclick="changeQuantity(1)">+</button>
+                            </div>
+                            <button class="btn btn-primary rounded-pill px-5" id="add-to-cart-btn">
+                                <i class="bi bi-cart-plus"></i> В корзину
+                            </button>
+                        </div>
+
+                        <!-- Доставка -->
+                        <div class="alert alert-light border rounded-3">
+                            <i class="bi bi-truck text-primary"></i>
+                            <span class="small">Доставка по Вологде и Вологодской области</span><br>
+                            <small class="text-muted">Для подтверждения заказа с вами свяжется оператор.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Наличие в магазинах -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-shop"></i> Наличие в магазинах
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="stocks-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Магазин</th>
+                                <th>Адрес</th>
+                                <th>Остаток</th>
+                                <th>Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for store in stocks %}
+                            <tr>
+                                <td><strong>{{ store[1] }}</strong></td>
+                                <td>{{ store[2] }}, {{ store[3] }}</td>
+                                <td>
+                                    {% if store[6] > 0 %}
+                                        <span class="badge bg-success">{{ store[6] }} шт.</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Нет в наличии</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if store[6] > 0 and store[7] and store[8] %}
+                                        <a href="https://yandex.ru/maps/?pt={{ store[8] }},{{ store[7] }}&z=18&l=map"
+                                           target="_blank"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-geo-alt"></i> Забрать отсюда
+                                        </a>
+                                    {% elif store[6] > 0 %}
+                                        <button class="btn btn-sm btn-secondary" disabled>Координаты не заданы</button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-secondary" disabled>Нет в наличии</button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Характеристики товара (specifications из главного товара) -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-3">
+                    <i class="bi bi-info-circle"></i> Характеристики
+                </h5>
+                {% if specs and specs.items() %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            {% set half = (specs.items()|length + 1) // 2 %}
+                            {% for key, value in specs.items() %}
+                                {% if loop.index0 < half %}
+                                <tr>
+                                    <th class="text-muted" style="width: 45%;">{{ key }}</th>
+                                    <td>{{ value }}</td>
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            {% for key, value in specs.items() %}
+                                {% if loop.index0 >= half %}
+                                <tr>
+                                    <th class="text-muted" style="width: 45%;">{{ key }}</th>
+                                    <td>{{ value }}</td>
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </table>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted text-center py-3">Характеристики не указаны</p>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+<script>
+let currentProductId = {{ product[0] }};
+
+function changeQuantity(delta) {
+    let input = document.getElementById('quantity');
+    let newVal = parseInt(input.value) + delta;
+    if (newVal >= 1) input.value = newVal;
+}
+
+function updateStocks(productId) {
+    fetch(`/get_stocks/${productId}`)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.querySelector('#stocks-table tbody');
+            tbody.innerHTML = '';
+            data.stocks.forEach(store => {
+                const hasCoords = store.latitude && store.longitude;
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${store.name}</strong></td>
+                        <td>${store.city}, ${store.address}</td>
+                        <td>${store.quantity > 0 ? `<span class="badge bg-success">${store.quantity} шт.</span>` : '<span class="badge bg-danger">Нет в наличии</span>'}</td>
+                        <td>
+                            ${store.quantity > 0 && hasCoords ?
+                                `<a href="https://yandex.ru/maps/?pt=${store.longitude},${store.latitude}&z=18&l=map"
+                                    target="_blank"
+                                    class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-geo-alt"></i> Забрать отсюда
+                                </a>` :
+                                (store.quantity > 0 ? '<button class="btn btn-sm btn-secondary" disabled>Координаты не заданы</button>' : '<button class="btn btn-sm btn-secondary" disabled>Нет в наличии</button>')
+                            }
+                         </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('product-price').innerText = data.price;
+            currentProductId = productId;
+        });
+}
+
+function attachStoreButtons() {
+    document.querySelectorAll('.add-to-cart-store').forEach(btn => {
+        btn.removeEventListener('click', addToCartHandler);
+        btn.addEventListener('click', addToCartHandler);
+    });
+}
+
+function addToCartHandler(e) {
+    const storeId = e.currentTarget.dataset.storeId;
+    const productId = e.currentTarget.dataset.productId;
+    const price = e.currentTarget.dataset.price;
+    const quantity = document.getElementById('quantity').value;
+
+    fetch('/add_to_cart', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `product_id=${productId}&quantity=${quantity}&price=${price}&store_id=${storeId}`
+    }).then(() => window.location.href = '/cart');
+}
+
+document.querySelectorAll('.variant-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.variant-btn').forEach(b => {
+            b.classList.remove('active', 'btn-primary');
+            b.classList.add('btn-outline-secondary');
+        });
+        this.classList.add('active', 'btn-primary');
+        this.classList.remove('btn-outline-secondary');
+
+        const productId = this.dataset.productId;
+        if (productId) updateStocks(productId);
+    });
+});
+
+document.getElementById('add-to-cart-btn').addEventListener('click', function() {
+    const quantity = document.getElementById('quantity').value;
+    const price = document.getElementById('product-price').innerText;
+    fetch('/add_to_cart', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `product_id=${currentProductId}&quantity=${quantity}&price=${price}&store_id=1`
+    }).then(() => window.location.href = '/cart');
+});
+
+attachStoreButtons();
+</script>
+
+<style>
+    .variant-btn.active {
+        background-color: #0093D0;
+        color: white;
+        border-color: #0093D0;
+    }
+    .variant-btn {
+        transition: all 0.2s;
+    }
+    .input-group button {
+        background-color: #f5f5f5;
+        border-color: #ddd;
+    }
+    .input-group input {
+        border-color: #ddd;
+    }
+</style>
 {% endblock %}
