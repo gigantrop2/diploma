@@ -1,22 +1,129 @@
 {% extends "base.html" %}
 
-{% block title %}Все товары{% endblock %}
+{% block title %}Каталог товаров{% endblock %}
 
 {% block content %}
+
+<!-- Блок с акцией -->
+<div class="promo-banner mb-5" style="background: linear-gradient(135deg, #0093D0 0%, #005D8F 100%); border-radius: 28px; overflow: hidden;">
+    <div class="row g-0 align-items-center">
+        <div class="col-md-8 p-4 p-md-5">
+            <div class="badge bg-white text-dark rounded-pill px-3 py-2 mb-3" style="font-size: 0.8rem;">🔥 Ограниченное предложение</div>
+            <h2 class="text-white fw-bold mb-3" style="font-size: 2rem;">ПОЛГОДА СВЯЗИ<br>БЕСПЛАТНО</h2>
+            <p class="text-white-50 mb-4">При переходе со своим номером</p>
+            <a href="#" class="btn btn-light rounded-pill px-4 py-2 fw-bold">ПОДРОБНЕЕ →</a>
+        </div>
+        <div class="col-md-4 d-none d-md-block">
+            <img src="https://cdn-icons-png.flaticon.com/512/1336/1336494.png" alt="Акция" class="img-fluid opacity-50" style="max-height: 180px;">
+        </div>
+    </div>
+</div>
+
+<!-- Поиск -->
+<div class="search-bar mb-4">
+    <form method="get" action="/products" id="searchForm" class="position-relative">
+        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary"></i>
+        <input type="text" name="search" class="form-control py-3 ps-5 rounded-pill border-0 shadow-sm"
+               placeholder="Поиск по каталогу" value="{{ request.args.get('search', '') }}" style="background: #F5F5F5;">
+        <input type="hidden" name="category" value="{{ selected_category }}">
+        <input type="hidden" name="brand" value="{{ selected_brand }}">
+        <input type="hidden" name="price_min" value="{{ price_min }}">
+        <input type="hidden" name="price_max" value="{{ price_max }}">
+        <input type="hidden" name="sort" value="{{ selected_sort }}">
+        <input type="hidden" name="page" value="1">
+    </form>
+</div>
+
+<!-- Категории плитками с выпадающими списками -->
+<!-- Категории плитками с выпадающими списками -->
+<div class="categories mb-5" style="position: relative; z-index: 1050;">
+    <div class="row g-3">
+        <!-- Телефоны с dropdown -->
+        <div class="col-md-4 col-6">
+            <div class="dropdown">
+                <div class="card border-0 shadow-sm text-center p-3 category-card dropdown-toggle"
+                     style="cursor: pointer;" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-phone fs-1 text-primary"></i>
+                    <span class="fw-semibold mt-2">Телефоны</span>
+                    <small class="text-muted">Сенсорные и кнопочные</small>
+                </div>
+                <ul class="dropdown-menu w-100 text-center" style="z-index: 1060;">
+                    <li><a class="dropdown-item fw-bold" href="/products?category=5">📱 Все телефоны</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="/products?category=7">📱 Смартфоны (сенсорные)</a></li>
+                    <li><a class="dropdown-item" href="/products?category=8">📞 Кнопочные телефоны</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Аксессуары с dropdown -->
+        <div class="col-md-4 col-6">
+            <div class="dropdown">
+                <div class="card border-0 shadow-sm text-center p-3 category-card dropdown-toggle"
+                     style="cursor: pointer;" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-headphones fs-1 text-primary"></i>
+                    <span class="fw-semibold mt-2">Аксессуары</span>
+                    <small class="text-muted">Чехлы, наушники, кабели</small>
+                </div>
+                <ul class="dropdown-menu w-100 text-center" style="z-index: 1060;">
+                    <li><a class="dropdown-item fw-bold" href="/products?category=2">🎧 Все аксессуары</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="/products?category=3">🎧 Наушники</a></li>
+                    <li><a class="dropdown-item" href="/products?category=4">📱 Чехлы</a></li>
+                    <li><a class="dropdown-item" href="/products?category=10">🔌 Переходники, кабели</a></li>
+                    <li><a class="dropdown-item" href="/products?category=11">⚡ Зарядные устройства</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Все товары -->
+        <div class="col-md-4 col-6">
+            <a href="/products" class="text-decoration-none category-link">
+                <div class="card border-0 shadow-sm text-center p-3 category-card">
+                    <i class="bi bi-grid-3x3-gap-fill fs-1 text-primary"></i>
+                    <span class="fw-semibold mt-2">Все товары</span>
+                    <small class="text-muted">{{ total_count }} товаров</small>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+
 <div class="row">
-    <!-- Боковая панель с фильтрами -->
-    <div class="col-md-3 mb-4">
-        <div class="card">
+    <!-- Фильтры -->
+    <div class="col-lg-3 mb-4">
+        <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
             <div class="card-body">
-                <h5 class="card-title">Фильтры</h5>
-                
-                <form method="get" action="/products">
-                    <!-- Сохраняем поисковый запрос -->
+                <h5 class="fw-bold mb-3">Фильтры</h5>
+
+                <form method="get" action="/products" id="filterForm">
                     <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
-                    
+                    <input type="hidden" name="page" value="1">
+
+                    <div class="mb-4">
+                        <h6 class="fw-semibold mb-2">Акции</h6>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="sale_combo" onchange="submitFilter()">
+                            <label class="form-check-label small">Скидка за комплект: 1 938 ₽</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="sale_exchange" onchange="submitFilter()">
+                            <label class="form-check-label small">Обмен минут и ГБ: 103 ₽</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="fw-semibold mb-2">Способ получения</h6>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="delivery" value="pickup" id="pickup" onchange="submitFilter()">
+                            <label class="form-check-label small">Самовывоз из магазина: {{ stores_count }}</label>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Категория</label>
-                        <select name="category" class="form-select">
+                        <label class="form-label fw-semibold">Категория</label>
+                        <select name="category" class="form-select form-select-sm" onchange="submitFilter()">
                             <option value="">Все категории</option>
                             {% for cat in categories %}
                             <option value="{{ cat[0] }}" {% if selected_category|string == cat[0]|string %}selected{% endif %}>
@@ -25,10 +132,10 @@
                             {% endfor %}
                         </select>
                     </div>
-                    
+
                     <div class="mb-3">
-                        <label class="form-label">Бренд</label>
-                        <select name="brand" class="form-select">
+                        <label class="form-label fw-semibold">Бренд</label>
+                        <select name="brand" class="form-select form-select-sm" onchange="submitFilter()">
                             <option value="">Все бренды</option>
                             {% for b in brands %}
                             <option value="{{ b[0] }}" {% if selected_brand == b[0] %}selected{% endif %}>
@@ -37,84 +144,102 @@
                             {% endfor %}
                         </select>
                     </div>
-                    
+
                     <div class="mb-3">
-                        <label class="form-label">Цена</label>
-                        <div class="row">
+                        <label class="form-label fw-semibold">Цена</label>
+                        <div class="row g-2">
                             <div class="col-6">
-                                <input type="number" name="price_min" class="form-control" 
-                                       placeholder="от" value="{{ price_min }}">
+                                <input type="number" name="price_min" class="form-control form-control-sm"
+                                       placeholder="от" value="{{ price_min }}" onchange="submitFilter()">
                             </div>
                             <div class="col-6">
-                                <input type="number" name="price_max" class="form-control" 
-                                       placeholder="до" value="{{ price_max }}">
+                                <input type="number" name="price_max" class="form-control form-control-sm"
+                                       placeholder="до" value="{{ price_max }}" onchange="submitFilter()">
                             </div>
                         </div>
                     </div>
-                    
-                    <button type="submit" class="btn btn-primary w-100">Применить</button>
-                    <a href="/products" class="btn btn-secondary w-100 mt-2">Сбросить</a>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Сортировка</label>
+                        <select name="sort" class="form-select form-select-sm" onchange="submitFilter()">
+                            <option value="name_asc" {% if selected_sort == 'name_asc' %}selected{% endif %}>По названию (А-Я)</option>
+                            <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Сначала дешёвые</option>
+                            <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Сначала дорогие</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill">Показать товары</button>
+                    <a href="/products" class="btn btn-outline-secondary w-100 mt-2 rounded-pill" id="resetBtn">Сбросить</a>
                 </form>
             </div>
         </div>
     </div>
-    
-    <!-- Основная часть с товарами -->
-    <div class="col-md-9">
-        <!-- Поиск и сортировка -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <form action="/products" method="get" class="d-flex">
-                            <input type="text" name="search" class="form-control me-2" 
-                                   placeholder="Поиск по названию..." 
-                                   value="{{ request.args.get('search', '') }}">
-                            <!-- Сохраняем остальные параметры -->
-                            <input type="hidden" name="category" value="{{ selected_category }}">
-                            <input type="hidden" name="brand" value="{{ selected_brand }}">
-                            <input type="hidden" name="price_min" value="{{ price_min }}">
-                            <input type="hidden" name="price_max" value="{{ price_max }}">
-                            <button type="submit" class="btn btn-primary">Найти</button>
-                        </form>
-                    </div>
-                    <div class="col-md-6">
-                        <form action="/products" method="get" class="d-flex">
-                            <select name="sort" class="form-select me-2">
-                                <option value="name_asc" {% if selected_sort == 'name_asc' %}selected{% endif %}>По названию (А-Я)</option>
-                                <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Сначала дешёвые</option>
-                                <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Сначала дорогие</option>
-                            </select>
-                            <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
-                            <input type="hidden" name="category" value="{{ selected_category }}">
-                            <input type="hidden" name="brand" value="{{ selected_brand }}">
-                            <input type="hidden" name="price_min" value="{{ price_min }}">
-                            <input type="hidden" name="price_max" value="{{ price_max }}">
-                            <button type="submit" class="btn btn-outline-secondary">Сортировать</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
+
+    <!-- Товары -->
+    <div class="col-lg-9">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h4 class="fw-bold mb-0">Устройства / Смартфоны</h4>
+            <span class="text-muted">Всего товаров: {{ total_count }}</span>
         </div>
-        
-        <!-- Результаты -->
+
         {% if products %}
-        <div class="row g-4">
+        <div class="row g-4 products-grid">
             {% for product in products %}
-            <div class="col-md-4 col-sm-6">
-                <div class="card product-card h-100">
+            <div class="col-md-6 col-lg-4">
+                <div class="card product-card h-100 border-0 shadow-sm">
                     <div class="card-body">
-                        <h5 class="card-title">{{ product[1] }}</h5>
+                        {% if loop.index <= 3 %}
+                        <span class="badge bg-danger rounded-pill mb-2 px-3 py-1">Новинка</span>
+                        {% endif %}
+                        <h6 class="card-title fw-bold mb-2">{{ product[1]|truncate(40) }}</h6>
                         {% if product[3] %}
                         <p class="card-text text-muted small">{{ product[3] }}</p>
                         {% endif %}
-                        <p class="price">{{ product[2] }} ₽</p>
-                        <a href="/product/{{ product[0] }}" class="btn btn-primary w-100">Подробнее</a>
+                        <div class="price mt-3">
+                            <span class="fw-bold fs-4">{{ "{:,.0f}".format(product[2]) }} ₽</span>
+                        </div>
+                        <a href="/product/{{ product[0] }}" class="btn btn-outline-primary w-100 mt-3 rounded-pill">Подробнее</a>
                     </div>
                 </div>
             </div>
             {% endfor %}
         </div>
+
+        <!-- Пагинация -->
+        {% if total_pages > 1 %}
+        <nav class="mt-5">
+            <ul class="pagination justify-content-center">
+                {% if page > 1 %}
+                <li class="page-item">
+                    <a class="page-link rounded-circle mx-1 pagi-link" href="?page={{ page-1 }}&search={{ request.args.get('search', '') }}&category={{ selected_category }}&brand={{ selected_brand }}&sort={{ selected_sort }}&price_min={{ price_min }}&price_max={{ price_max }}">«</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-circle mx-1">«</span></li>
+                {% endif %}
+
+                {% for p in range(1, total_pages + 1) %}
+                    {% if p == page %}
+                    <li class="page-item active"><span class="page-link rounded-circle mx-1">{{ p }}</span></li>
+                    {% elif p <= 5 or p > total_pages - 2 or (p >= page - 2 and p <= page + 2) %}
+                    <li class="page-item">
+                        <a class="page-link rounded-circle mx-1 pagi-link" href="?page={{ p }}&search={{ request.args.get('search', '') }}&category={{ selected_category }}&brand={{ selected_brand }}&sort={{ selected_sort }}&price_min={{ price_min }}&price_max={{ price_max }}">{{ p }}</a>
+                    </li>
+                    {% elif p == 6 and page > 4 %}
+                    <li class="page-item disabled"><span class="page-link mx-1">...</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link rounded-circle mx-1 pagi-link" href="?page={{ page+1 }}&search={{ request.args.get('search', '') }}&category={{ selected_category }}&brand={{ selected_brand }}&sort={{ selected_sort }}&price_min={{ price_min }}&price_max={{ price_max }}">»</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link rounded-circle mx-1">»</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
         {% else %}
         <div class="alert alert-info text-center">
             Товаров не найдено. Попробуйте изменить параметры поиска.
@@ -122,4 +247,77 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+function submitFilter() {
+    document.getElementById('filterForm').submit();
+}
+
+// Сохраняем позицию скролла перед уходом со страницы
+function saveScrollPosition() {
+    localStorage.setItem('scrollPos', window.scrollY);
+}
+
+// Для всех форм
+document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', saveScrollPosition);
+});
+
+// Для ссылок категорий и пагинации
+document.querySelectorAll('.category-link, .pagi-link, #resetBtn').forEach(link => {
+    link.addEventListener('click', saveScrollPosition);
+});
+
+// Восстанавливаем позицию после загрузки
+window.addEventListener('load', function() {
+    const scrollPos = localStorage.getItem('scrollPos');
+    if (scrollPos) {
+        window.scrollTo(0, parseInt(scrollPos));
+        localStorage.removeItem('scrollPos');
+    }
+});
+</script>
+
+<style>
+    .category-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    .category-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    .product-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    .page-link {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #1A1A1A;
+        border: none;
+        background: #F5F5F5;
+        margin: 0 4px;
+    }
+    .page-link:hover {
+        background: #0093D0;
+        color: white;
+    }
+    .page-item.active .page-link {
+        background: #0093D0;
+        color: white;
+    }
+    @media (max-width: 768px) {
+        .promo-banner h2 {
+            font-size: 1.3rem;
+        }
+    }
+</style>
+
 {% endblock %}

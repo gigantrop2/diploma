@@ -109,6 +109,8 @@ def products():
     brand = request.args.get('brand', '')
     price_min = request.args.get('price_min', '')
     price_max = request.args.get('price_max', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = 12
 
     conn = get_connection()
     cur = conn.cursor()
@@ -124,9 +126,18 @@ def products():
     """
     params = []
 
+    # Фильтр по категории (с жёсткой логикой для родительских категорий)
     if category_id and category_id.isdigit():
-        query += " AND p.category_id = %s"
-        params.append(int(category_id))
+        cat_id = int(category_id)
+
+        if cat_id == 5:  # Телефоны (родитель)
+            query += " AND p.category_id IN (5, 7, 8)"
+        elif cat_id == 2:  # Аксессуары (родитель)
+            query += " AND p.category_id IN (2, 3, 4, 10, 11)"
+        else:
+            # Обычная подкатегория
+            query += " AND p.category_id = %s"
+            params.append(cat_id)
 
     if search_query:
         query += " AND p.product_name ILIKE %s"
@@ -152,19 +163,39 @@ def products():
         query += " ORDER BY p.product_name ASC"
 
     cur.execute(query, params)
-    items = cur.fetchall()
+    all_items = cur.fetchall()
+    total_count = len(all_items)
 
-    # Список категорий для фильтра
+    # Пагинация
+    offset = (page - 1) * per_page
+    items = all_items[offset:offset + per_page]
+    total_pages = (total_count + per_page - 1) // per_page
+
+    # Список категорий для фильтра (выпадающий список)
     cur.execute("SELECT category_id, category_name FROM categories ORDER BY category_name")
     categories = cur.fetchall()
 
-    # Список брендов (НОВЫЙ ЗАПРОС — с учётом выбранной категории)
+    # Список брендов (с учётом выбранной категории)
     if category_id and category_id.isdigit():
-        cur.execute("""
-            SELECT DISTINCT brand FROM products 
-            WHERE category_id = %s AND brand IS NOT NULL AND brand != ''
-            ORDER BY brand
-        """, (int(category_id),))
+        cat_id = int(category_id)
+        if cat_id == 5:
+            cur.execute("""
+                SELECT DISTINCT brand FROM products 
+                WHERE category_id IN (5,7,8) AND brand IS NOT NULL AND brand != ''
+                ORDER BY brand
+            """)
+        elif cat_id == 2:
+            cur.execute("""
+                SELECT DISTINCT brand FROM products 
+                WHERE category_id IN (2,3,4,10,11) AND brand IS NOT NULL AND brand != ''
+                ORDER BY brand
+            """)
+        else:
+            cur.execute("""
+                SELECT DISTINCT brand FROM products 
+                WHERE category_id = %s AND brand IS NOT NULL AND brand != ''
+                ORDER BY brand
+            """, (cat_id,))
     else:
         cur.execute("""
             SELECT DISTINCT brand FROM products 
@@ -172,6 +203,10 @@ def products():
             ORDER BY brand
         """)
     brands = cur.fetchall()
+
+    # Количество магазинов
+    cur.execute("SELECT COUNT(*) FROM stores")
+    stores_count = cur.fetchone()[0]
 
     cur.close()
     conn.close()
@@ -184,7 +219,12 @@ def products():
                            selected_sort=sort,
                            selected_brand=brand,
                            price_min=price_min,
-                           price_max=price_max)
+                           price_max=price_max,
+                           total_count=total_count,
+                           stores_count=stores_count,
+                           page=page,
+                           total_pages=total_pages,
+                           per_page=per_page)
 
 # =====================================================
 # Поиск
