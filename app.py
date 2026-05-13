@@ -975,7 +975,16 @@ def admin_upload_csv_simple():
         if not file:
             return "Файл не выбран"
 
-        content = file.read().decode('utf-8-sig')
+        # Пробуем разные кодировки
+        raw = file.read()
+        for enc in ['utf-8-sig', 'cp1251', 'latin1', 'cp866']:
+            try:
+                content = raw.decode(enc)
+                break
+            except:
+                continue
+        else:
+            return "Не удалось определить кодировку файла"
         from io import StringIO
         df = pd.read_csv(StringIO(content), sep=';', header=None, dtype=str)
 
