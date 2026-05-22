@@ -1830,8 +1830,26 @@ def admin_store_edit(store_id):
         store_name = request.form['store_name']
         city = request.form.get('city', 'Вологда')
         address = request.form.get('address', '')
-        latitude = request.form.get('latitude') or None
-        longitude = request.form.get('longitude') or None
+
+        # Обработка координат
+        lat_raw = request.form.get('latitude')
+        lon_raw = request.form.get('longitude')
+
+        latitude = None
+        longitude = None
+
+        if lat_raw and lat_raw not in ('', 'None'):
+            try:
+                latitude = float(lat_raw)
+            except:
+                pass
+
+        if lon_raw and lon_raw not in ('', 'None'):
+            try:
+                longitude = float(lon_raw)
+            except:
+                pass
+
         working_hours = request.form.get('working_hours', '10:00–20:00')
         is_visible = request.form.get('is_visible') == 'on'
 
