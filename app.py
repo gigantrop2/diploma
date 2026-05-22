@@ -1367,7 +1367,7 @@ def admin_upload_csv_simple():
 
 
 # =====================================================
-# Админка: загрузка из 1С (TXT с табуляцией) — с привязкой по кодам 1С
+# Админка: загрузка из 1С (TXT с табуляцией)
 # =====================================================
 @app.route('/admin/upload_1c_txt', methods=['GET', 'POST'])
 @admin_or_manager_required
@@ -1460,99 +1460,47 @@ def admin_upload_1c_txt():
                 skipped += 1
                 continue
 
-            # Бренд (колонка 7) и его код (колонка 8 или 9?)
+            # Бренд (колонка 7)
             brand_name = parts[7].strip() if len(parts) > 7 else ''
-            brand_code = parts[8].strip() if len(parts) > 8 else ''  # код бренда в 1С
+            final_brand = brand_name if brand_name and brand_name not in ['nan', 'None'] else extract_brand(name)
 
             # Категория (колонка 8) и её код (колонка 9)
             category_name = parts[8].strip() if len(parts) > 8 else ''
-            category_code = parts[9].strip() if len(parts) > 9 else ''  # код категории в 1С
+            category_code = parts[9].strip() if len(parts) > 9 else ''
 
             # =====================================================
-            # 1. Находим или создаём КАТЕГОРИЮ по коду 1С
+            # Определение категории (без дублирования)
             # =====================================================
             category_id = None
-            if category_code and category_code not in ['nan', 'None']:
+
+            if category_code and category_code not in ['nan', 'None', '']:
                 cur.execute("SELECT category_id FROM categories WHERE code_1c = %s", (category_code,))
                 row = cur.fetchone()
                 if row:
                     category_id = row[0]
-                else:
-                    # Создаём категорию с кодом из 1С
-                    # Сначала пробуем найти по коду 1С
-                    if category_code and category_code not in ['nan', 'None']:
-                        cur.execute("SELECT category_id FROM categories WHERE code_1c = %s", (category_code,))
-                        row = cur.fetchone()
-                        if row:
-                            category_id = row[0]
-                        else:
-                            # Пробуем найти по названию
-                            cur.execute("SELECT category_id FROM categories WHERE category_name = %s", (category_name,))
-                            row = cur.fetchone()
-                            if row:
-                                category_id = row[0]
-                            else:
-                                # Создаём новую
-                                cur.execute("""
-                                    INSERT INTO categories (category_name, code_1c)
-                                    VALUES (%s, %s)
-                                    ON CONFLICT (category_name) DO NOTHING
-                                    RETURNING category_id
-                                """, (category_name, category_code))
-                                result = cur.fetchone()
-                                if result:
-                                    category_id = result[0]
-                                else:
-                                    # Если конфликт — достаём существующую
-                                    cur.execute("SELECT category_id FROM categories WHERE category_name = %s",
-                                                (category_name,))
-                                    row = cur.fetchone()
-                                    if row:
-                                        category_id = row[0]
-                    result = cur.fetchone()
-                    if result:
-                        category_id = result[0]
 
-            # Если категория не создалась — ищем по имени (старый способ)
-            if category_id is None and category_name and category_name not in ['nan', 'None']:
+            if category_id is None and category_name and category_name not in ['nan', 'None', '']:
                 cur.execute("SELECT category_id FROM categories WHERE category_name = %s", (category_name,))
                 row = cur.fetchone()
                 if row:
                     category_id = row[0]
-                else:
+
+            if category_id is None and category_name and category_name not in ['nan', 'None', '']:
+                try:
                     cur.execute("""
-                        INSERT INTO categories (category_name)
-                        VALUES (%s)
+                        INSERT INTO categories (category_name, code_1c)
+                        VALUES (%s, %s)
                         RETURNING category_id
-                    """, (category_name,))
+                    """, (category_name, category_code))
                     category_id = cur.fetchone()[0]
+                except:
+                    cur.execute("SELECT category_id FROM categories WHERE category_name = %s", (category_name,))
+                    row = cur.fetchone()
+                    if row:
+                        category_id = row[0]
 
             # =====================================================
-            # 2. Находим или создаём БРЕНД по коду 1С (если есть таблица brands)
-            # =====================================================
-            # Если у тебя есть таблица brands — раскомментируй
-            # brand_id = None
-            # if brand_code and brand_code not in ['nan', 'None']:
-            #     cur.execute("SELECT brand_id FROM brands WHERE code_1c = %s", (brand_code,))
-            #     row = cur.fetchone()
-            #     if row:
-            #         brand_id = row[0]
-            #     else:
-            #         cur.execute("""
-            #             INSERT INTO brands (brand_name, code_1c)
-            #             VALUES (%s, %s)
-            #             RETURNING brand_id
-            #         """, (brand_name, brand_code))
-            #         brand_id = cur.fetchone()[0]
-            # else:
-            #     # Если кода нет — используем название
-            #     brand_name = extract_brand(name) or brand_name
-
-            # Пока используем просто название бренда
-            final_brand = brand_name if brand_name and brand_name not in ['nan', 'None'] else extract_brand(name)
-
-            # =====================================================
-            # 3. Находим или создаём МАГАЗИН
+            # Магазин
             # =====================================================
             cur.execute("SELECT store_id FROM stores WHERE store_name = %s", (store_name,))
             store_row = cur.fetchone()
@@ -1567,7 +1515,7 @@ def admin_upload_1c_txt():
                 store_id = cur.fetchone()[0]
 
             # =====================================================
-            # 4. Вставка или обновление ТОВАРА
+            # Вставка товара
             # =====================================================
             cur.execute("""
                 INSERT INTO products (product_name, brand, price, product_code, category_id)
@@ -1584,7 +1532,7 @@ def admin_upload_1c_txt():
             inserted += 1
 
             # =====================================================
-            # 5. Вставка или обновление ОСТАТКОВ
+            # Остатки
             # =====================================================
             cur.execute("""
                 INSERT INTO stock_balances (store_id, product_id, quantity, reserved)
