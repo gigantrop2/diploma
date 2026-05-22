@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">{{ title }}</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <div class="mb-3">
+                            <label class="form-label">Название магазина</label>
+                            <input type="text" name="store_name" class="form-control" value="{{ store[1] if store else '' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Город</label>
+                            <input type="text" name="city" class="form-control" value="{{ store[2] if store else 'Вологда' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Адрес</label>
+                            <input type="text" name="address" class="form-control" value="{{ store[3] if store else '' }}">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Широта (latitude)</label>
+                                <input type="text" name="latitude" class="form-control" value="{{ store[4] if store else '' }}" placeholder="59.220">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Долгота (longitude)</label>
+                                <input type="text" name="longitude" class="form-control" value="{{ store[5] if store else '' }}" placeholder="39.890">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Часы работы</label>
+                            <input type="text" name="working_hours" class="form-control" value="{{ store[6] if store else '10:00–20:00' }}">
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" name="is_visible" class="form-check-input" id="is_visible" {% if store and store[7] %}checked{% endif %}>
+                            <label class="form-check-label" for="is_visible">Показывать на сайте</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                        <a href="/admin/stores" class="btn btn-secondary">Отмена</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Управление категориями{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">📁 Управление категориями</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="post" action="/admin/category/add" class="row g-3">
+                <div class="col-md-6">
+                    <input type="text" name="category_name" class="form-control" placeholder="Новая категория" required>
+                </div>
+                <div class="col-md-4">
+                    <select name="parent_id" class="form-select">
+                        <option value="">-- Родительская категория --</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat[0] }}">{{ cat[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">➕ Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr><th>ID</th><th>Название</th><th>Родитель</th><th>Действия</th></tr>
+                </thead>
+                <tbody>
+                    {% for cat in categories %}
+                    <tr>
+                        <td>{{ cat[0] }}</td>
+                        <td>
+                            <form method="post" action="/admin/category/{{ cat[0] }}/edit" style="display: inline-block;">
+                                <input type="text" name="category_name" value="{{ cat[1] }}" class="form-control form-control-sm d-inline-block w-auto">
+                                <button type="submit" class="btn btn-sm btn-warning">✏️</button>
+                            </form>
+                        </td>
+                        <td>{{ cat[2] if cat[2] else '—' }}</td>
+                        <td>
+                            <form method="post" action="/admin/category/{{ cat[0] }}/delete" style="display: inline-block;" onsubmit="return confirm('Удалить категорию?')">
+                                <button type="submit" class="btn btn-sm btn-danger">🗑️</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <a href="/admin" class="btn btn-secondary mt-3">← Назад в админку</a>
+</div>
+{% endblock %}

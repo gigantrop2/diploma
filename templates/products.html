@@ -101,38 +101,48 @@
                     <input type="hidden" name="search" value="{{ request.args.get('search', '') }}">
                     <input type="hidden" name="page" value="1">
 
-                    <div class="mb-4">
-                        <h6 class="fw-semibold mb-2">Акции</h6>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="sale_combo" onchange="submitFilter()">
-                            <label class="form-check-label small">Скидка за комплект: 1 938 ₽</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="sale_exchange" onchange="submitFilter()">
-                            <label class="form-check-label small">Обмен минут и ГБ: 103 ₽</label>
-                        </div>
-                    </div>
+<!--                    <div class="mb-4">-->
+<!--                        <h6 class="fw-semibold mb-2">Акции</h6>-->
+<!--                        <div class="form-check">-->
+<!--                            <input class="form-check-input" type="checkbox" id="sale_combo" onchange="submitFilter()">-->
+<!--                            <label class="form-check-label small">Скидка за комплект: 1 938 ₽</label>-->
+<!--                        </div>-->
+<!--                        <div class="form-check">-->
+<!--                            <input class="form-check-input" type="checkbox" id="sale_exchange" onchange="submitFilter()">-->
+<!--                            <label class="form-check-label small">Обмен минут и ГБ: 103 ₽</label>-->
+<!--                        </div>-->
+<!--                    </div>-->
 
-                    <div class="mb-4">
-                        <h6 class="fw-semibold mb-2">Способ получения</h6>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="delivery" value="pickup" id="pickup" onchange="submitFilter()">
-                            <label class="form-check-label small">Самовывоз из магазина: {{ stores_count }}</label>
-                        </div>
-                    </div>
+<!--                    <div class="mb-4">-->
+<!--                        <h6 class="fw-semibold mb-2">Способ получения</h6>-->
+<!--                        <div class="form-check">-->
+<!--                            <input class="form-check-input" type="radio" name="delivery" value="pickup" id="pickup" onchange="submitFilter()">-->
+<!--                            <label class="form-check-label small">Самовывоз из магазина: {{ stores_count }}</label>-->
+<!--                        </div>-->
+<!--                    </div>-->
 
+    <!--                    <div class="mb-3">-->
+    <!--                        <label class="form-label fw-semibold">Категория</label>-->
+    <!--                        <select name="category" class="form-select form-select-sm" onchange="submitFilter()">-->
+    <!--                            <option value="">Все категории</option>-->
+    <!--                            {% for cat in categories %}-->
+    <!--                            <option value="{{ cat[0] }}" {% if selected_category|string == cat[0]|string %}selected{% endif %}>-->
+    <!--                                {{ cat[1] }}-->
+    <!--                            </option>-->
+    <!--                            {% endfor %}-->
+    <!--                        </select>-->
+    <!--                    </div>-->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Категория</label>
-                        <select name="category" class="form-select form-select-sm" onchange="submitFilter()">
-                            <option value="">Все категории</option>
-                            {% for cat in categories %}
-                            <option value="{{ cat[0] }}" {% if selected_category|string == cat[0]|string %}selected{% endif %}>
-                                {{ cat[1] }}
+                        <label class="form-label fw-semibold">Магазин</label>
+                        <select name="store_id" class="form-select form-select-sm" onchange="submitFilter()">
+                            <option value="">Все магазины</option>
+                            {% for store in stores_list %}
+                            <option value="{{ store[0] }}" {% if selected_store|string == store[0]|string %}selected{% endif %}>
+                                {{ store[1] }} - {{ store[2] }}
                             </option>
                             {% endfor %}
                         </select>
                     </div>
-
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Бренд</label>
                         <select name="brand" class="form-select form-select-sm" onchange="submitFilter()">
@@ -183,7 +193,6 @@
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-100 rounded-pill">Показать товары</button>
                     <a href="/products" class="btn btn-outline-secondary w-100 mt-2 rounded-pill" id="resetBtn">Сбросить</a>
                 </form>
             </div>

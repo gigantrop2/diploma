@@ -53,7 +53,7 @@
                 balloonContent: `
                     <strong>${store.name}</strong><br>
                     ${store.address}<br>
-                    <a href="/store/${store.id}">Товары в магазине</a>
+                    <a href="/products?store_id=${store.id}" class="btn btn-sm btn-primary mt-2">Товары в магазине</a>
                 `,
                 hintContent: store.name
             }, {

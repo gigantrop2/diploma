@@ -11,28 +11,25 @@
         <div class="card h-100">
             <div class="card-body">
                 <h5 class="card-title">{{ store[1] }}</h5>
-                <p class="card-text">
-                    <i class="bi bi-geo-alt"></i> {{ store[2] }}, {{ store[3] }}<br>
-                    {% if store[6] %}
-                        <i class="bi bi-clock"></i> {{ store[6] }}
-                    {% endif %}
-                </p>
+                <p class="card-text">{{ store[2] }}, {{ store[3] }}</p>
                 
-                {% if store[4] and store[5] %}
-                <a href="https://yandex.ru/maps/?pt={{ store[5] }},{{ store[4] }}&z=18&l=map" 
-                   target="_blank" 
-                   class="btn btn-sm btn-primary">
-                    <i class="bi bi-map"></i> Открыть на карте
-                </a>
-                {% else %}
-                <span class="text-muted">Координаты не указаны</span>
-                {% endif %}
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        {% if store[4] and store[5] %}
+                        <a href="https://yandex.ru/maps/?pt={{ store[5] }},{{ store[4] }}&z=18&l=map"
+                           target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-map"></i> Открыть на карте
+                        </a>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <a href="/products?store_id={{ store[0] }}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-shop"></i> Товары в магазине
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    {% else %}
-    <div class="col-12">
-        <div class="alert alert-info">Магазинов пока нет</div>
     </div>
     {% endfor %}
 </div>

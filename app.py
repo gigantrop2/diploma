@@ -104,58 +104,71 @@ def index():
 # =====================================================
 @app.route('/products')
 def products():
+    # Получаем параметры из URL
     category_id = request.args.get('category', '')
     sort = request.args.get('sort', 'name_asc')
     search_query = request.args.get('search', '').strip()
     brand = request.args.get('brand', '')
     price_min = request.args.get('price_min', '')
     price_max = request.args.get('price_max', '')
+    store_id = request.args.get('store_id', '')
     page = request.args.get('page', 1, type=int)
     per_page = 12
 
     conn = get_connection()
     cur = conn.cursor()
 
-    # Базовый запрос товаров
+    # Базовый запрос товаров с остатками
     query = """
         SELECT p.product_id, p.product_name, p.price, 
                COALESCE(c.category_name, 'Без категории') as category_name,
-               p.brand
+               p.brand,
+               COALESCE(SUM(sb.quantity - sb.reserved), 0) as available
         FROM products p
         LEFT JOIN categories c ON p.category_id = c.category_id
+        LEFT JOIN stock_balances sb ON p.product_id = sb.product_id
         WHERE 1=1
     """
     params = []
 
-    # Фильтр по категории (с жёсткой логикой для родительских категорий)
+    # Фильтр по магазину
+    if store_id and store_id.isdigit():
+        query += " AND sb.store_id = %s"
+        params.append(int(store_id))
+
+    # Фильтр по категории
     if category_id and category_id.isdigit():
         cat_id = int(category_id)
-
         if cat_id == 5:  # Телефоны (родитель)
             query += " AND p.category_id IN (5, 7, 8)"
         elif cat_id == 2:  # Аксессуары (родитель)
             query += " AND p.category_id IN (2, 3, 4, 10, 11)"
         else:
-            # Обычная подкатегория
             query += " AND p.category_id = %s"
             params.append(cat_id)
 
+    # Поиск по названию
     if search_query:
         query += " AND p.product_name ILIKE %s"
         params.append(f'%{search_query}%')
 
+    # Фильтр по бренду
     if brand:
         query += " AND p.brand = %s"
         params.append(brand)
 
+    # Фильтр по цене
     if price_min:
         query += " AND p.price >= %s"
         params.append(float(price_min))
-
     if price_max:
         query += " AND p.price <= %s"
         params.append(float(price_max))
 
+    # Группировка для SUM
+    query += " GROUP BY p.product_id, p.product_name, p.price, c.category_name, p.brand"
+
+    # Сортировка
     if sort == 'price_asc':
         query += " ORDER BY p.price ASC"
     elif sort == 'price_desc':
@@ -172,7 +185,7 @@ def products():
     items = all_items[offset:offset + per_page]
     total_pages = (total_count + per_page - 1) // per_page
 
-    # Список категорий для фильтра (выпадающий список)
+    # Список категорий для фильтра
     cur.execute("SELECT category_id, category_name FROM categories ORDER BY category_name")
     categories = cur.fetchall()
 
@@ -180,32 +193,20 @@ def products():
     if category_id and category_id.isdigit():
         cat_id = int(category_id)
         if cat_id == 5:
-            cur.execute("""
-                SELECT DISTINCT brand FROM products 
-                WHERE category_id IN (5,7,8) AND brand IS NOT NULL AND brand != ''
-                ORDER BY brand
-            """)
+            cur.execute("SELECT DISTINCT brand FROM products WHERE category_id IN (5,7,8) AND brand IS NOT NULL AND brand != '' ORDER BY brand")
         elif cat_id == 2:
-            cur.execute("""
-                SELECT DISTINCT brand FROM products 
-                WHERE category_id IN (2,3,4,10,11) AND brand IS NOT NULL AND brand != ''
-                ORDER BY brand
-            """)
+            cur.execute("SELECT DISTINCT brand FROM products WHERE category_id IN (2,3,4,10,11) AND brand IS NOT NULL AND brand != '' ORDER BY brand")
         else:
-            cur.execute("""
-                SELECT DISTINCT brand FROM products 
-                WHERE category_id = %s AND brand IS NOT NULL AND brand != ''
-                ORDER BY brand
-            """, (cat_id,))
+            cur.execute("SELECT DISTINCT brand FROM products WHERE category_id = %s AND brand IS NOT NULL AND brand != '' ORDER BY brand", (cat_id,))
     else:
-        cur.execute("""
-            SELECT DISTINCT brand FROM products 
-            WHERE brand IS NOT NULL AND brand != '' 
-            ORDER BY brand
-        """)
+        cur.execute("SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL AND brand != '' ORDER BY brand")
     brands = cur.fetchall()
 
-    # Количество магазинов
+    # Список магазинов для фильтра
+    cur.execute("SELECT store_id, store_name, city FROM stores ORDER BY store_name")
+    stores_list = cur.fetchall()
+
+    # Количество магазинов для отображения
     cur.execute("SELECT COUNT(*) FROM stores")
     stores_count = cur.fetchone()[0]
 
@@ -216,9 +217,11 @@ def products():
                            products=items,
                            categories=categories,
                            brands=brands,
+                           stores_list=stores_list,
                            selected_category=category_id,
                            selected_sort=sort,
                            selected_brand=brand,
+                           selected_store=store_id,
                            price_min=price_min,
                            price_max=price_max,
                            total_count=total_count,
@@ -1361,86 +1364,228 @@ def admin_upload_csv_simple():
     </body>
     </html>
     '''
+
+
 # =====================================================
-# Админка: загрузка CSV (простая, без проверок)
+# Админка: загрузка из 1С (TXT с табуляцией) — с привязкой по кодам 1С
 # =====================================================
-@app.route('/admin/upload_excel_final', methods=['GET', 'POST'])
+@app.route('/admin/upload_1c_txt', methods=['GET', 'POST'])
 @admin_or_manager_required
-def admin_upload_excel_final():
+def admin_upload_1c_txt():
     if request.method == 'POST':
         file = request.files['file']
         if not file:
             return "Файл не выбран"
 
-        import xlrd
-        wb = xlrd.open_workbook(file_contents=file.read())
-        ws = wb.sheet_by_index(0)
+        raw = file.read()
+
+        # Пробуем кодировки
+        content = None
+        for enc in ['utf-8-sig', 'cp1251', 'windows-1251', 'latin1']:
+            try:
+                content = raw.decode(enc)
+                break
+            except:
+                continue
+
+        if content is None:
+            return "Не удалось определить кодировку"
+
+        from io import StringIO
+
+        # Читаем файл построчно
+        lines = content.split('\n')
+
+        # Ищем заголовки
+        header_line = None
+        for i, line in enumerate(lines):
+            if 'Магазин' in line and 'Номенклатура' in line:
+                header_line = i
+                break
+
+        if header_line is None:
+            return "Не найден заголовок с колонками"
+
+        data_lines = lines[header_line + 1:]
 
         conn = get_connection()
         cur = conn.cursor()
 
-        store_id = 1
         inserted = 0
+        skipped = 0
 
-        for row_idx in range(ws.nrows):
-            row = ws.row_values(row_idx)
-
-            # Определяем уровень: сколько первых ячеек пустые
-            level = 0
-            for col in range(min(5, len(row))):
-                if row[col] is None or str(row[col]).strip() == '':
-                    level += 1
-                else:
-                    break
-
-            # Товар — только уровень 5
-            if level != 5:
+        for line_num, line in enumerate(data_lines):
+            if not line.strip():
                 continue
 
-            name = str(row[level]).strip() if len(row) > level else ''
+            parts = line.split('\t')
+            if len(parts) < 11:
+                skipped += 1
+                continue
+
+            # Магазин (колонка 1)
+            store_name = parts[1].strip()
+            if not store_name or store_name in ['nan', 'None']:
+                store_name = 'Главный магазин'
+
+            # Название товара (колонка 3)
+            name = parts[3].strip()
             if not name or name in ['nan', 'None', '']:
+                skipped += 1
                 continue
 
-            # Артикул (колонка 4)
-            article = str(row[4]).strip() if len(row) > 4 else ''
-            if not article or len(article) < 5:
+            # Артикул товара (колонка 9)
+            article = parts[9].strip() if len(parts) > 9 else ''
+            if not article or article in ['nan', 'None', '']:
+                skipped += 1
                 continue
 
-            # Количество (колонка 6)
+            # Количество (колонка 4)
             quantity = 0
-            if len(row) > 6:
-                try:
-                    quantity = float(str(row[6]).replace(',', '.').replace(' ', '').replace(' ', ''))
-                except:
-                    pass
+            try:
+                quantity = float(parts[4].replace(',', '.').replace(' ', ''))
+            except:
+                pass
             if quantity == 0:
+                skipped += 1
                 continue
 
-            # Цена (колонка 7)
+            # Цена (колонка 10)
             price = 0
-            if len(row) > 7:
-                try:
-                    price = float(str(row[7]).replace(',', '.').replace(' ', '').replace(' ', ''))
-                except:
-                    pass
+            try:
+                price = float(parts[10].replace(',', '.').replace(' ', '').replace(' ', ''))
+            except:
+                pass
             if price == 0:
+                skipped += 1
                 continue
 
-            brand = name.split()[0] if name else None
+            # Бренд (колонка 7) и его код (колонка 8 или 9?)
+            brand_name = parts[7].strip() if len(parts) > 7 else ''
+            brand_code = parts[8].strip() if len(parts) > 8 else ''  # код бренда в 1С
 
+            # Категория (колонка 8) и её код (колонка 9)
+            category_name = parts[8].strip() if len(parts) > 8 else ''
+            category_code = parts[9].strip() if len(parts) > 9 else ''  # код категории в 1С
+
+            # =====================================================
+            # 1. Находим или создаём КАТЕГОРИЮ по коду 1С
+            # =====================================================
+            category_id = None
+            if category_code and category_code not in ['nan', 'None']:
+                cur.execute("SELECT category_id FROM categories WHERE code_1c = %s", (category_code,))
+                row = cur.fetchone()
+                if row:
+                    category_id = row[0]
+                else:
+                    # Создаём категорию с кодом из 1С
+                    # Сначала пробуем найти по коду 1С
+                    if category_code and category_code not in ['nan', 'None']:
+                        cur.execute("SELECT category_id FROM categories WHERE code_1c = %s", (category_code,))
+                        row = cur.fetchone()
+                        if row:
+                            category_id = row[0]
+                        else:
+                            # Пробуем найти по названию
+                            cur.execute("SELECT category_id FROM categories WHERE category_name = %s", (category_name,))
+                            row = cur.fetchone()
+                            if row:
+                                category_id = row[0]
+                            else:
+                                # Создаём новую
+                                cur.execute("""
+                                    INSERT INTO categories (category_name, code_1c)
+                                    VALUES (%s, %s)
+                                    ON CONFLICT (category_name) DO NOTHING
+                                    RETURNING category_id
+                                """, (category_name, category_code))
+                                result = cur.fetchone()
+                                if result:
+                                    category_id = result[0]
+                                else:
+                                    # Если конфликт — достаём существующую
+                                    cur.execute("SELECT category_id FROM categories WHERE category_name = %s",
+                                                (category_name,))
+                                    row = cur.fetchone()
+                                    if row:
+                                        category_id = row[0]
+                    result = cur.fetchone()
+                    if result:
+                        category_id = result[0]
+
+            # Если категория не создалась — ищем по имени (старый способ)
+            if category_id is None and category_name and category_name not in ['nan', 'None']:
+                cur.execute("SELECT category_id FROM categories WHERE category_name = %s", (category_name,))
+                row = cur.fetchone()
+                if row:
+                    category_id = row[0]
+                else:
+                    cur.execute("""
+                        INSERT INTO categories (category_name)
+                        VALUES (%s)
+                        RETURNING category_id
+                    """, (category_name,))
+                    category_id = cur.fetchone()[0]
+
+            # =====================================================
+            # 2. Находим или создаём БРЕНД по коду 1С (если есть таблица brands)
+            # =====================================================
+            # Если у тебя есть таблица brands — раскомментируй
+            # brand_id = None
+            # if brand_code and brand_code not in ['nan', 'None']:
+            #     cur.execute("SELECT brand_id FROM brands WHERE code_1c = %s", (brand_code,))
+            #     row = cur.fetchone()
+            #     if row:
+            #         brand_id = row[0]
+            #     else:
+            #         cur.execute("""
+            #             INSERT INTO brands (brand_name, code_1c)
+            #             VALUES (%s, %s)
+            #             RETURNING brand_id
+            #         """, (brand_name, brand_code))
+            #         brand_id = cur.fetchone()[0]
+            # else:
+            #     # Если кода нет — используем название
+            #     brand_name = extract_brand(name) or brand_name
+
+            # Пока используем просто название бренда
+            final_brand = brand_name if brand_name and brand_name not in ['nan', 'None'] else extract_brand(name)
+
+            # =====================================================
+            # 3. Находим или создаём МАГАЗИН
+            # =====================================================
+            cur.execute("SELECT store_id FROM stores WHERE store_name = %s", (store_name,))
+            store_row = cur.fetchone()
+            if store_row:
+                store_id = store_row[0]
+            else:
+                cur.execute("""
+                    INSERT INTO stores (store_name, city, address)
+                    VALUES (%s, %s, %s)
+                    RETURNING store_id
+                """, (store_name, 'Вологда', store_name))
+                store_id = cur.fetchone()[0]
+
+            # =====================================================
+            # 4. Вставка или обновление ТОВАРА
+            # =====================================================
             cur.execute("""
-                INSERT INTO products (product_name, brand, price, product_code)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO products (product_name, brand, price, product_code, category_id)
+                VALUES (%s, %s, %s, %s, %s)
                 ON CONFLICT (product_code) DO UPDATE
                 SET product_name = EXCLUDED.product_name,
                     brand = COALESCE(EXCLUDED.brand, products.brand),
-                    price = EXCLUDED.price
+                    price = EXCLUDED.price,
+                    category_id = COALESCE(EXCLUDED.category_id, products.category_id)
                 RETURNING product_id
-            """, (name, brand, price, article))
+            """, (name, final_brand, price, article, category_id))
 
             product_id = cur.fetchone()[0]
             inserted += 1
 
+            # =====================================================
+            # 5. Вставка или обновление ОСТАТКОВ
+            # =====================================================
             cur.execute("""
                 INSERT INTO stock_balances (store_id, product_id, quantity, reserved)
                 VALUES (%s, %s, %s, 0)
@@ -1456,7 +1601,8 @@ def admin_upload_excel_final():
         return f"""
         <div style="padding:20px; font-family:Arial;">
             <h2>Загрузка завершена</h2>
-            <p>Товаров добавлено: <strong>{inserted}</strong></p>
+            <p>Товаров добавлено/обновлено: <strong>{inserted}</strong></p>
+            <p>Пропущено строк: <strong>{skipped}</strong></p>
             <a href="/admin/products">← Вернуться к товарам</a>
         </div>
         """
@@ -1466,19 +1612,25 @@ def admin_upload_excel_final():
     <html>
     <head>
         <meta charset="UTF-8">
-        <title>Загрузка Excel (xlrd)</title>
+        <title>Загрузка из 1С (TXT)</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body>
         <div class="container mt-5" style="max-width: 600px;">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">📂 Загрузка .xls</h3>
+                    <h3 class="mb-0">📂 Загрузка товаров из 1С</h3>
                 </div>
                 <div class="card-body">
                     <form method="post" enctype="multipart/form-data">
-                        <input type="file" name="file" class="form-control" accept=".xls,.xlsx" required>
-                        <button type="submit" class="btn btn-primary mt-3 w-100">Загрузить</button>
+                        <div class="mb-3">
+                            <label class="form-label">Файл .txt (табуляция, UTF-8)</label>
+                            <input type="file" name="file" class="form-control" accept=".txt" required>
+                            <small class="text-muted">
+                                Категории привязываются по коду 1С. Названия можно менять в админке.
+                            </small>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Загрузить</button>
                     </form>
                 </div>
             </div>
@@ -1577,6 +1729,141 @@ def cart_count():
 
     return jsonify({'count': int(total)})
 
+
+@app.route('/admin/categories')
+@admin_required
+def admin_categories():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT c.category_id, c.category_name, p.category_name as parent_name
+        FROM categories c
+        LEFT JOIN categories p ON c.parent_id = p.category_id
+        ORDER BY c.category_id
+    """)
+    categories = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('admin_categories.html', categories=categories)
+
+@app.route('/admin/category/add', methods=['POST'])
+@admin_required
+def admin_category_add():
+    name = request.form['category_name'].strip()
+    parent_id = request.form.get('parent_id') or None
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO categories (category_name, parent_id) VALUES (%s, %s)", (name, parent_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect('/admin/categories')
+
+@app.route('/admin/category/<int:category_id>/edit', methods=['POST'])
+@admin_required
+def admin_category_edit(category_id):
+    name = request.form['category_name'].strip()
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE categories SET category_name = %s WHERE category_id = %s", (name, category_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect('/admin/categories')
+
+@app.route('/admin/category/<int:category_id>/delete', methods=['POST'])
+@admin_required
+def admin_category_delete(category_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM categories WHERE category_id = %s", (category_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect('/admin/categories')
+
+@app.route('/admin/stores')
+@admin_required
+def admin_stores():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT store_id, store_name, city, address, latitude, longitude, working_hours, is_visible FROM stores ORDER BY store_name")
+    stores = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('admin_stores.html', stores=stores)
+
+
+@app.route('/admin/store/add', methods=['GET', 'POST'])
+@admin_required
+def admin_store_add():
+    if request.method == 'POST':
+        store_name = request.form['store_name']
+        city = request.form.get('city', 'Вологда')
+        address = request.form.get('address', '')
+        latitude = request.form.get('latitude') or None
+        longitude = request.form.get('longitude') or None
+        working_hours = request.form.get('working_hours', '10:00–20:00')
+        is_visible = request.form.get('is_visible') == 'on'
+
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO stores (store_name, city, address, latitude, longitude, working_hours, is_visible)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (store_name, city, address, latitude, longitude, working_hours, is_visible))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect('/admin/stores')
+
+    return render_template('admin_store_form.html', title="Добавить магазин")
+
+#точки
+@app.route('/admin/store/<int:store_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def admin_store_edit(store_id):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    if request.method == 'POST':
+        store_name = request.form['store_name']
+        city = request.form.get('city', 'Вологда')
+        address = request.form.get('address', '')
+        latitude = request.form.get('latitude') or None
+        longitude = request.form.get('longitude') or None
+        working_hours = request.form.get('working_hours', '10:00–20:00')
+        is_visible = request.form.get('is_visible') == 'on'
+
+        cur.execute("""
+            UPDATE stores 
+            SET store_name=%s, city=%s, address=%s, latitude=%s, longitude=%s, working_hours=%s, is_visible=%s
+            WHERE store_id=%s
+        """, (store_name, city, address, latitude, longitude, working_hours, is_visible, store_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect('/admin/stores')
+
+    cur.execute(
+        "SELECT store_id, store_name, city, address, latitude, longitude, working_hours, is_visible FROM stores WHERE store_id=%s",
+        (store_id,))
+    store = cur.fetchone()
+    cur.close()
+    conn.close()
+    return render_template('admin_store_form.html', title="Редактировать магазин", store=store)
+
+
+@app.route('/admin/store/<int:store_id>/delete', methods=['POST'])
+@admin_required
+def admin_store_delete(store_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM stores WHERE store_id=%s", (store_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect('/admin/stores')
 
 # =====================================================
 # Запуск

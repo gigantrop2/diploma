@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Управление магазинами{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>🏪 Управление магазинами</h1>
+        <a href="/admin/store/add" class="btn btn-success">+ Добавить магазин</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th><th>Название</th><th>Город</th><th>Адрес</th><th>Координаты</th><th>Часы работы</th><th>Видим</th><th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for store in stores %}
+                <tr>
+                    <td>{{ store[0] }}</td>
+                    <td>{{ store[1] }}</td>
+                    <td>{{ store[2] }}</td>
+                    <td>{{ store[3] }}</td>
+                    <td>{% if store[4] and store[5] %}{{ store[4] }}, {{ store[5] }}{% else %}—{% endif %}</td>
+                    <td>{{ store[6] or '10:00–20:00' }}</td>
+                    <td>{% if store[7] %}✅{% else %}❌{% endif %}</td>
+                    <td>
+                        <a href="/admin/store/{{ store[0] }}/edit" class="btn btn-sm btn-warning">✏️</a>
+                        <form action="/admin/store/{{ store[0] }}/delete" method="post" style="display: inline-block;" onsubmit="return confirm('Удалить магазин?')">
+                            <button type="submit" class="btn btn-sm btn-danger">🗑️</button>
+                        </form>
+                     </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <a href="/admin" class="btn btn-secondary mt-3">← Назад в админку</a>
+</div>
+{% endblock %}

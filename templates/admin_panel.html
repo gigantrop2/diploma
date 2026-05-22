@@ -61,15 +61,38 @@
         <div class="col-md-4 mb-3">
             <div class="card">
                 <div class="card-body text-center">
-                    <i class="bi bi-file-excel" style="font-size: 3rem;"></i>
-                    <h5 class="card-title mt-3">📂 Финал Excel</h5>
-                    <p class="card-text">Загрузка 6.xls напрямую</p>
-                    <a href="/admin/upload_excel_final" class="btn btn-primary">Перейти</a>
+                    <i class="bi bi-filetype-txt" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">📂 Загрузка из 1С (TXT)</h5>
+                    <p class="card-text">Загрузка товаров из файла с табуляцией (.txt)</p>
+                    <a href="/admin/upload_1c_txt" class="btn btn-primary">Перейти</a>
                 </div>
             </div>
         </div>
         {% endif %}
-
+        {% if session.is_admin or session.is_manager %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-tags" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Категории</h5>
+                    <p class="card-text">Управление категориями товаров</p>
+                    <a href="/admin/categories" class="btn btn-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if session.is_admin or session.is_manager %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-shop" style="font-size: 3rem;"></i>
+                    <h5 class="card-title mt-3">Точки продаж</h5>
+                    <p class="card-text">Управление магазинами и координатами</p>
+                    <a href="/admin/stores" class="btn btn-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     {% if session.is_admin or session.is_manager %}
     <div class="col-md-4 mb-3">
         <div class="card">
@@ -82,6 +105,8 @@
         </div>
     </div>
     {% endif %}
+
+
 
         {% if session.is_admin %}
         <div class="col-md-4 mb-3">
