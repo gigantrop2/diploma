@@ -6,22 +6,39 @@
     <title>{% block title %}Салон связи Франшиза T2{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <style>
+        <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             background-color: #F8F9FA;
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
+
+        .container {
+            flex: 1;
+        }
+
         /* ШАПКА TELE2 */
         .navbar-tele2 {
             background-color: #1A1A1A !important;
         }
+
         .navbar-tele2 .navbar-brand,
         .navbar-tele2 .nav-link {
             color: #FFFFFF !important;
         }
+
         .navbar-tele2 .nav-link:hover {
             color: #0093D0 !important;
         }
+
         /* КНОПКИ TELE2 */
         .btn-primary {
             background-color: #0093D0 !important;
@@ -30,9 +47,11 @@
             padding: 8px 24px !important;
             font-weight: 600 !important;
         }
+
         .btn-primary:hover {
             background-color: #0070A0 !important;
         }
+
         /* КАРТОЧКИ ТОВАРОВ */
         .product-card {
             background: white;
@@ -41,21 +60,25 @@
             border: none;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
+
         .product-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 20px rgba(0,0,0,0.1);
         }
+
         .price {
             font-size: 1.6rem;
             font-weight: bold;
             color: #1A1A1A;
         }
+
         .old-price {
             text-decoration: line-through;
             color: #999;
             font-size: 0.9rem;
             margin-left: 8px;
         }
+
         .badge-hot {
             background-color: #DB0F56;
             color: white;
@@ -64,6 +87,7 @@
             font-size: 0.7rem;
             font-weight: bold;
         }
+
         /* ПЛАШКИ КАТЕГОРИЙ */
         .category-pill {
             background: white;
@@ -75,22 +99,26 @@
             font-weight: 500;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
+
         .category-pill:hover {
             background: #0093D0;
             color: white;
             transform: translateY(-2px);
         }
-        /* ПОДВАЛ */
+
+        /* ПОДВАЛ TELE2 */
         .footer-tele2 {
             background-color: #1A1A1A;
             color: #AAAAAA;
             padding: 40px 0 20px;
             margin-top: 60px;
         }
+
         .footer-tele2 a {
             color: #0093D0;
             text-decoration: none;
         }
+
         /* ПЛАВАЮЩАЯ КОРЗИНА */
         .floating-cart {
             position: fixed;
@@ -98,6 +126,7 @@
             right: 20px;
             z-index: 1000;
         }
+
         .floating-cart a {
             display: flex;
             align-items: center;
@@ -109,6 +138,7 @@
             color: white;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
+
         .cart-badge {
             position: absolute;
             top: -5px;

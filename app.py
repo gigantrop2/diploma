@@ -104,60 +104,51 @@ def index():
 # =====================================================
 @app.route('/products')
 def products():
-    # Получаем параметры из URL
     category_id = request.args.get('category', '')
     sort = request.args.get('sort', 'name_asc')
     search_query = request.args.get('search', '').strip()
     brand = request.args.get('brand', '')
     price_min = request.args.get('price_min', '')
     price_max = request.args.get('price_max', '')
-    store_id = request.args.get('store_id', '')
     page = request.args.get('page', 1, type=int)
     per_page = 12
 
     conn = get_connection()
+    if conn is None:
+        return render_template('products.html', products=[], categories=[], brands=[], stores_list=[], total_count=0,
+                               stores_count=0, page=1, total_pages=1)
+
     cur = conn.cursor()
 
-    # Базовый запрос товаров с остатками
+    # Базовый запрос
     query = """
         SELECT p.product_id, p.product_name, p.price, 
                COALESCE(c.category_name, 'Без категории') as category_name,
-               p.brand,
-               COALESCE(SUM(sb.quantity - sb.reserved), 0) as available
+               p.brand
         FROM products p
         LEFT JOIN categories c ON p.category_id = c.category_id
-        LEFT JOIN stock_balances sb ON p.product_id = sb.product_id
         WHERE 1=1
     """
     params = []
 
-    # Фильтр по магазину
-    if store_id and store_id.isdigit():
-        query += " AND sb.store_id = %s"
-        params.append(int(store_id))
-
-    # Фильтр по категории
     if category_id and category_id.isdigit():
         cat_id = int(category_id)
-        if cat_id == 5:  # Телефоны (родитель)
+        if cat_id == 5:
             query += " AND p.category_id IN (5, 7, 8)"
-        elif cat_id == 2:  # Аксессуары (родитель)
+        elif cat_id == 2:
             query += " AND p.category_id IN (2, 3, 4, 10, 11)"
         else:
             query += " AND p.category_id = %s"
             params.append(cat_id)
 
-    # Поиск по названию
     if search_query:
         query += " AND p.product_name ILIKE %s"
         params.append(f'%{search_query}%')
 
-    # Фильтр по бренду
     if brand:
         query += " AND p.brand = %s"
         params.append(brand)
 
-    # Фильтр по цене
     if price_min:
         query += " AND p.price >= %s"
         params.append(float(price_min))
@@ -165,10 +156,6 @@ def products():
         query += " AND p.price <= %s"
         params.append(float(price_max))
 
-    # Группировка для SUM
-    query += " GROUP BY p.product_id, p.product_name, p.price, c.category_name, p.brand"
-
-    # Сортировка
     if sort == 'price_asc':
         query += " ORDER BY p.price ASC"
     elif sort == 'price_desc':
@@ -176,39 +163,52 @@ def products():
     else:
         query += " ORDER BY p.product_name ASC"
 
-    cur.execute(query, params)
-    all_items = cur.fetchall()
-    total_count = len(all_items)
+    try:
+        cur.execute(query, params)
+        all_items = cur.fetchall()
+    except Exception:
+        all_items = []
 
-    # Пагинация
+    total_count = len(all_items)
     offset = (page - 1) * per_page
     items = all_items[offset:offset + per_page]
-    total_pages = (total_count + per_page - 1) // per_page
+    total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
 
-    # Список категорий для фильтра
-    cur.execute("SELECT category_id, category_name FROM categories ORDER BY category_name")
-    categories = cur.fetchall()
+    # Категории
+    try:
+        cur.execute("SELECT category_id, category_name FROM categories ORDER BY category_name")
+        categories = cur.fetchall()
+    except Exception:
+        categories = []
 
-    # Список брендов (с учётом выбранной категории)
-    if category_id and category_id.isdigit():
-        cat_id = int(category_id)
-        if cat_id == 5:
-            cur.execute("SELECT DISTINCT brand FROM products WHERE category_id IN (5,7,8) AND brand IS NOT NULL AND brand != '' ORDER BY brand")
-        elif cat_id == 2:
-            cur.execute("SELECT DISTINCT brand FROM products WHERE category_id IN (2,3,4,10,11) AND brand IS NOT NULL AND brand != '' ORDER BY brand")
+    # Бренды
+    try:
+        if category_id and category_id.isdigit():
+            cat_id = int(category_id)
+            if cat_id == 5:
+                cur.execute(
+                    "SELECT DISTINCT brand FROM products WHERE category_id IN (5,7,8) AND brand IS NOT NULL AND brand != '' ORDER BY brand")
+            elif cat_id == 2:
+                cur.execute(
+                    "SELECT DISTINCT brand FROM products WHERE category_id IN (2,3,4,10,11) AND brand IS NOT NULL AND brand != '' ORDER BY brand")
+            else:
+                cur.execute(
+                    "SELECT DISTINCT brand FROM products WHERE category_id = %s AND brand IS NOT NULL AND brand != '' ORDER BY brand",
+                    (cat_id,))
         else:
-            cur.execute("SELECT DISTINCT brand FROM products WHERE category_id = %s AND brand IS NOT NULL AND brand != '' ORDER BY brand", (cat_id,))
-    else:
-        cur.execute("SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL AND brand != '' ORDER BY brand")
-    brands = cur.fetchall()
+            cur.execute("SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL AND brand != '' ORDER BY brand")
+        brands = cur.fetchall()
+    except Exception:
+        brands = []
 
-    # Список магазинов для фильтра
-    cur.execute("SELECT store_id, store_name, city FROM stores ORDER BY store_name")
-    stores_list = cur.fetchall()
-
-    # Количество магазинов для отображения
-    cur.execute("SELECT COUNT(*) FROM stores")
-    stores_count = cur.fetchone()[0]
+    # Магазины
+    try:
+        cur.execute("SELECT store_id, store_name, city FROM stores ORDER BY store_name")
+        stores_list = cur.fetchall()
+        stores_count = len(stores_list)
+    except Exception:
+        stores_list = []
+        stores_count = 0
 
     cur.close()
     conn.close()
@@ -221,7 +221,6 @@ def products():
                            selected_category=category_id,
                            selected_sort=sort,
                            selected_brand=brand,
-                           selected_store=store_id,
                            price_min=price_min,
                            price_max=price_max,
                            total_count=total_count,
@@ -259,56 +258,75 @@ def search():
 @app.route('/product/<int:product_id>')
 def product_detail(product_id):
     conn = get_connection()
+    if conn is None:
+        return "База данных недоступна", 503
+
     cur = conn.cursor()
 
-    # Проверяем, не является ли товар неглавным
-    cur.execute("SELECT group_id FROM products WHERE product_id = %s", (product_id,))
-    group_result = cur.fetchone()
-    if group_result and group_result[0] is not None and group_result[0] != product_id:
-        cur.close()
-        conn.close()
-        return redirect(f'/product/{group_result[0]}')
+    # Проверяем группу
+    try:
+        cur.execute("SELECT group_id FROM products WHERE product_id = %s", (product_id,))
+        group_result = cur.fetchone()
+        if group_result and group_result[0] is not None and group_result[0] != product_id:
+            cur.close()
+            conn.close()
+            return redirect(f'/product/{group_result[0]}')
+    except Exception:
+        pass
 
-    # Получаем главный товар (включая group_name)
-    cur.execute("SELECT product_id, product_name, price, params, group_name FROM products WHERE product_id = %s",
-                (product_id,))
-    product = cur.fetchone()
+    # Получаем товар
+    try:
+        cur.execute(
+            "SELECT product_id, product_name, price, params, group_name, image_url, product_code, brand, specifications FROM products WHERE product_id = %s",
+            (product_id,))
+        product = cur.fetchone()
+        if not product:
+            return "Товар не найден", 404
+    except Exception:
+        return "Ошибка базы данных", 500
 
-    if not product:
-        return "Товар не найден", 404
+    # Парсим JSON
+    import json
+    specs = {}
+    if product[8]:
+        try:
+            specs = json.loads(product[8])
+        except:
+            specs = {}
 
-    # params уже словарь (JSONB)
-    main_params = product[3] if product[3] else {}
-
-    # Получаем все товары из группы
-    cur.execute("""
-        SELECT product_id, product_name, price, params 
-        FROM products 
-        WHERE group_id = %s OR product_id = %s
-    """, (product_id, product_id))
-    group_products = cur.fetchall()
-
-    # Собираем параметры для отображения на странице
+    # Получаем товары из группы
     variants = {}
-    for p in group_products:
-        params = p[3] if p[3] else {}
-        for key, value in params.items():
-            if key not in variants:
-                variants[key] = []
-            if not any(v['value'] == value for v in variants[key]):
-                variants[key].append({'value': value, 'product_id': p[0]})
+    try:
+        cur.execute(
+            "SELECT product_id, product_name, price, params FROM products WHERE group_id = %s OR product_id = %s",
+            (product_id, product_id))
+        group_products = cur.fetchall()
+        for p in group_products:
+            params = p[3] if p[3] else {}
+            for key, value in params.items():
+                if key not in variants:
+                    variants[key] = []
+                if not any(v['value'] == value for v in variants[key]):
+                    variants[key].append({'value': value, 'product_id': p[0]})
+    except Exception:
+        pass
 
-    # Получаем остатки для текущего товара
-    cur.execute("""
-        SELECT s.store_id, s.store_name, s.city, s.address, 
-               sb.quantity, sb.reserved, 
-               (sb.quantity - sb.reserved) as available
-        FROM stock_balances sb
-        JOIN stores s ON sb.store_id = s.store_id
-        WHERE sb.product_id = %s AND sb.quantity > 0
-        ORDER BY s.city, s.store_name
-    """, (product_id,))
-    stocks = cur.fetchall()
+    # Получаем остатки
+    stocks = []
+    try:
+        cur.execute("""
+            SELECT s.store_id, s.store_name, s.city, s.address, 
+                   sb.quantity, sb.reserved, 
+                   (sb.quantity - sb.reserved) as available,
+                   s.latitude, s.longitude
+            FROM stock_balances sb
+            JOIN stores s ON sb.store_id = s.store_id
+            WHERE sb.product_id = %s AND sb.quantity > 0
+            ORDER BY s.city, s.store_name
+        """, (product_id,))
+        stocks = cur.fetchall()
+    except Exception:
+        stocks = []
 
     cur.close()
     conn.close()
@@ -316,6 +334,7 @@ def product_detail(product_id):
     return render_template('product_detail.html',
                            product=product,
                            stocks=stocks,
+                           specs=specs,
                            variants=variants)
 
 
@@ -325,16 +344,26 @@ def product_detail(product_id):
 @app.route('/stores')
 def stores():
     conn = get_connection()
+    if conn is None:
+        return render_template('stores.html', stores=[])
+
     cur = conn.cursor()
-    cur.execute("""
-        SELECT store_id, store_name, city, address, 
-               latitude, longitude, working_hours 
-        FROM stores 
-        ORDER BY city, store_name
-    """)
-    stores_list = cur.fetchall()
+
+    try:
+        cur.execute("""
+            SELECT store_id, store_name, city, address, 
+                   latitude, longitude, working_hours 
+            FROM stores 
+            WHERE is_visible = TRUE
+            ORDER BY city, store_name
+        """)
+        stores_list = cur.fetchall()
+    except Exception:
+        stores_list = []
+
     cur.close()
     conn.close()
+
     return render_template('stores.html', stores=stores_list)
 
 
@@ -344,17 +373,26 @@ def stores():
 @app.route('/map')
 def map_view():
     conn = get_connection()
+    if conn is None:
+        return render_template('map.html', stores=[])
+
     cur = conn.cursor()
-    cur.execute("""
-        SELECT store_id, store_name, city, address, 
-               store_type, latitude, longitude, working_hours
-        FROM stores 
-        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
-        ORDER BY city, store_name
-    """)
-    stores = cur.fetchall()
+
+    try:
+        cur.execute("""
+            SELECT store_id, store_name, city, address, 
+                   store_type, latitude, longitude, working_hours
+            FROM stores 
+            WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND is_visible = TRUE
+            ORDER BY city, store_name
+        """)
+        stores = cur.fetchall()
+    except Exception:
+        stores = []
+
     cur.close()
     conn.close()
+
     return render_template('map.html', stores=stores)
 
 
@@ -542,35 +580,59 @@ def get_stocks(product_id):
     conn.close()
     return jsonify({'price': price, 'stocks': stocks})
 
+
 @app.route('/cart')
 def cart():
     if 'user_id' not in session:
         return redirect('/login')
+
     conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        SELECT c.cart_id, c.store_id, s.store_name, s.city
-        FROM carts c
-        JOIN stores s ON c.store_id = s.store_id
-        WHERE c.user_id = %s
-    """, (session['user_id'],))
-    cart_info = cur.fetchone()
-    if not cart_info:
+    if conn is None:
         return render_template('cart.html', items=[], total=0, all_stores=[])
+
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT c.cart_id, c.store_id, s.store_name, s.city
+            FROM carts c
+            JOIN stores s ON c.store_id = s.store_id
+            WHERE c.user_id = %s
+        """, (session['user_id'],))
+        cart_info = cur.fetchone()
+    except Exception:
+        cart_info = None
+
+    if not cart_info:
+        cur.close()
+        conn.close()
+        return render_template('cart.html', items=[], total=0, all_stores=[])
+
     cart_id = cart_info[0]
-    cur.execute("""
-        SELECT ci.product_id, p.product_name, ci.quantity, ci.price,
-               (ci.quantity * ci.price) as subtotal
-        FROM cart_items ci
-        JOIN products p ON ci.product_id = p.product_id
-        WHERE ci.cart_id = %s
-    """, (cart_id,))
-    items = cur.fetchall()
-    total = sum(item[4] for item in items)
-    cur.execute("SELECT store_id, store_name, city FROM stores ORDER BY city")
-    all_stores = cur.fetchall()
+
+    try:
+        cur.execute("""
+            SELECT ci.product_id, p.product_name, ci.quantity, ci.price,
+                   (ci.quantity * ci.price) as subtotal
+            FROM cart_items ci
+            JOIN products p ON ci.product_id = p.product_id
+            WHERE ci.cart_id = %s
+        """, (cart_id,))
+        items = cur.fetchall()
+        total = sum(item[4] for item in items)
+    except Exception:
+        items = []
+        total = 0
+
+    try:
+        cur.execute("SELECT store_id, store_name, city FROM stores ORDER BY city")
+        all_stores = cur.fetchall()
+    except Exception:
+        all_stores = []
+
     cur.close()
     conn.close()
+
     return render_template('cart.html', cart=cart_info, items=items, total=total, all_stores=all_stores)
 
 
@@ -849,20 +911,29 @@ def admin_panel():
 @admin_or_manager_required
 def admin_orders():
     conn = get_connection()
+    if conn is None:
+        return render_template('admin_orders.html', orders=[])
+
     cur = conn.cursor()
-    cur.execute("""
-        SELECT o.order_id, o.order_number, u.full_name, o.customer_phone,
-               o.order_date, s.status_name, o.total_amount,
-               st.store_name
-        FROM orders o
-        JOIN users u ON o.user_id = u.user_id
-        JOIN order_statuses s ON o.status_id = s.status_id
-        JOIN stores st ON o.target_store_id = st.store_id
-        ORDER BY o.order_date DESC
-    """)
-    orders = cur.fetchall()
+
+    try:
+        cur.execute("""
+            SELECT o.order_id, o.order_number, u.full_name, o.customer_phone,
+                   o.order_date, s.status_name, o.total_amount,
+                   st.store_name
+            FROM orders o
+            JOIN users u ON o.user_id = u.user_id
+            JOIN order_statuses s ON o.status_id = s.status_id
+            JOIN stores st ON o.target_store_id = st.store_id
+            ORDER BY o.order_date DESC
+        """)
+        orders = cur.fetchall()
+    except Exception:
+        orders = []
+
     cur.close()
     conn.close()
+
     return render_template('admin_orders.html', orders=orders)
 
 
@@ -942,11 +1013,20 @@ def update_order_status(order_id):
 @admin_or_manager_required
 def admin_products():
     conn = get_connection()
+    if conn is None:
+        return render_template('admin_products.html', products=[])
+
     cur = conn.cursor()
-    cur.execute("SELECT product_id, product_name, brand, price, group_id FROM products ORDER BY product_name")
-    products = cur.fetchall()
+
+    try:
+        cur.execute("SELECT product_id, product_name, brand, price FROM products ORDER BY product_name")
+        products = cur.fetchall()
+    except Exception:
+        products = []
+
     cur.close()
     conn.close()
+
     return render_template('admin_products.html', products=products)
 
 
@@ -1138,16 +1218,13 @@ def admin_user_reset_password(user_id):
     new_password = request.form.get('new_password')
     if not new_password or len(new_password) < 4:
         return "Пароль должен быть не менее 4 символов"
-
     password_hash = generate_password_hash(new_password)
-
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("UPDATE users SET password_hash = %s WHERE user_id = %s", (password_hash, user_id))
     conn.commit()
     cur.close()
     conn.close()
-
     return redirect('/admin/users')
 
 
