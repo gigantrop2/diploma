@@ -1135,14 +1135,19 @@ def admin_user_role(user_id):
 @app.route('/admin/user/<int:user_id>/reset_password', methods=['POST'])
 @admin_required
 def admin_user_reset_password(user_id):
-    new_password = request.form['new_password']
+    new_password = request.form.get('new_password')
+    if not new_password or len(new_password) < 4:
+        return "Пароль должен быть не менее 4 символов"
+
     password_hash = generate_password_hash(new_password)
+
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("UPDATE users SET password_hash=%s WHERE user_id=%s", (password_hash, user_id))
+    cur.execute("UPDATE users SET password_hash = %s WHERE user_id = %s", (password_hash, user_id))
     conn.commit()
     cur.close()
     conn.close()
+
     return redirect('/admin/users')
 
 
